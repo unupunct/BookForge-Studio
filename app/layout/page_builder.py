@@ -20,6 +20,7 @@ from ..domain.content_blocks import (Block, CodeBlock, ExerciseBlock, FootnoteBl
 from ..domain.layouts import MM_TO_PT, BookSettings
 from ..domain.sections import GENERATED_KINDS, RECTO_KINDS, Section
 from ..domain.styles import ResolvedStyle, StyleSet
+from .hyphenation import get_hyphenator
 from .measurement import break_lines, place_line, text_width, tokenize
 from .model import Glyphs, ImageItem, Item, LayoutIssue, LineItem, RectItem
 from .typography import fonts
@@ -97,6 +98,7 @@ class BuildContext:
         self.styles = StyleSet(defs)
         self.matter = "main"
         self.width, self.height = content_size(self.settings, "main")
+        self.hyphenator = get_hyphenator(book.metadata.language) if st.hyphenate else None
         self.chapter_numbers: dict[str, int] = {}
         n = 0
         for sec in book.walk():
@@ -120,7 +122,7 @@ def _baseline(leading: float, size: float) -> float:
 def text_atoms(runs: list[Run], style: ResolvedStyle, ctx: BuildContext, block_id: str | None,
                *, width: float | None = None, left_extra: float = 0.0, bullet: str | None = None,
                align: str | None = None, decorate: bool = True,
-               preserve_newlines: bool = False) -> list[Atom]:
+               preserve_newlines: bool = False, hyphenate: bool = False) -> list[Atom]:
     width = ctx.width if width is None else width
     left = style.left_indent + left_extra
     right = style.right_indent
@@ -128,7 +130,7 @@ def text_atoms(runs: list[Run], style: ResolvedStyle, ctx: BuildContext, block_i
     first_w = width - right - first_x
     rest_w = width - right - left
     toks = tokenize(runs, style, preserve_newlines=preserve_newlines)
-    lines = break_lines(toks, first_w, rest_w)
+    lines = break_lines(toks, first_w, rest_w, ctx.hyphenator if hyphenate else None)
     leading = style.font_size * style.line_height
     align = align or style.align
     atoms: list[Atom] = []
@@ -177,7 +179,7 @@ def paragraph_flow(block: ParagraphBlock, ctx: BuildContext, first: bool) -> Flo
     if not block.runs:
         atoms = [Atom(style.font_size * style.line_height)]
     else:
-        atoms = text_atoms(block.runs, style, ctx, block.id, preserve_newlines=True)
+        atoms = text_atoms(block.runs, style, ctx, block.id, preserve_newlines=True, hyphenate=True)
     f = _flow_from_style(atoms, style, ctx, block.id)
     f.keep_with_next = f.keep_with_next or block.keep_with_next
     # Short paragraphs are not split across pages.

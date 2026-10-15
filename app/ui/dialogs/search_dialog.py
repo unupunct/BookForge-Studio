@@ -46,6 +46,8 @@ class SearchDialog(QDialog):
         self.tables = QCheckBox("Tables")
         self.tables.setChecked(True)
         self.hidden = QCheckBox("Hidden sections")
+        self.regex = QCheckBox("Regular expression")
+        self.regex.setToolTip("Python regular expressions; the replacement may use \\1, \\2 ...")
         grid.addWidget(QLabel("Find"), 0, 0)
         grid.addWidget(self.find, 0, 1, 1, 3)
         grid.addWidget(QLabel("Replace"), 1, 0)
@@ -57,6 +59,7 @@ class SearchDialog(QDialog):
         for i, w in enumerate((self.headings, self.code, self.captions, self.tables)):
             grid.addWidget(w, 3, i)
         grid.addWidget(self.hidden, 4, 0)
+        grid.addWidget(self.regex, 4, 1)
         lay.addLayout(grid)
         bar = QHBoxLayout()
         self.find_btn = QPushButton("Find all")
@@ -91,11 +94,17 @@ class SearchDialog(QDialog):
             current_section_id=self.current_section_id if self.scope.currentData() else None,
             headings=self.headings.isChecked(), code=self.code.isChecked(),
             captions=self.captions.isChecked(), tables=self.tables.isChecked(),
-            include_hidden=self.hidden.isChecked())
+            include_hidden=self.hidden.isChecked(), regex=self.regex.isChecked())
 
     def run_search(self) -> None:
         self.state.flush()
-        self.hits = search_book(self.state.project, self.find.text(), self.options())
+        try:
+            self.hits = search_book(self.state.project, self.find.text(), self.options())
+        except ValueError as e:
+            self.hits = []
+            self.tree.clear()
+            self.status.setText(str(e))
+            return
         self.tree.clear()
         names = {"heading": "Heading", "paragraph": "Text", "code": "Code", "table": "Table",
                  "image": "Caption", "poetry": "Poetry", "list": "List", "quote": "Quote"}
@@ -121,7 +130,11 @@ class SearchDialog(QDialog):
             self.status.setText("That block is locked. Unlock it in Block properties first.")
             return
         q, r, o = self.find.text(), self.repl.text(), self.options()
-        ok = self.state.edit("Replace", lambda p: replace_one(p, h, q, r, o))
+        try:
+            ok = self.state.edit("Replace", lambda p: replace_one(p, h, q, r, o))
+        except ValueError as e:
+            self.status.setText(str(e))
+            return
         self.status.setText("Replaced 1 match" if ok else "Could not replace (text changed?)")
         self.replaced.emit()
         self.run_search()
@@ -131,7 +144,11 @@ class SearchDialog(QDialog):
         if not q:
             return
         self.state.flush()
-        n = len(search_book(self.state.project, q, self.options()))
+        try:
+            n = len(search_book(self.state.project, q, self.options()))
+        except ValueError as e:
+            self.status.setText(str(e))
+            return
         if not n:
             self.status.setText("No matches")
             return
@@ -141,7 +158,11 @@ class SearchDialog(QDialog):
                                 "You can undo with Ctrl+Z.") != QMessageBox.Yes:
             return
         r, o = self.repl.text(), self.options()
-        res = self.state.edit("Replace all", lambda p: replace_in_book(p, q, r, o))
+        try:
+            res = self.state.edit("Replace all", lambda p: replace_in_book(p, q, r, o))
+        except ValueError as e:
+            self.status.setText(str(e))
+            return
         msg = f"Replaced {res.replaced} match(es)"
         if res.skipped_locked:
             msg += f"; {res.skipped_locked} in locked blocks were left unchanged"

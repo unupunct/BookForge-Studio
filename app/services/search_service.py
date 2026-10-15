@@ -21,6 +21,7 @@ class SearchOptions:
     captions: bool = True
     tables: bool = True
     include_hidden: bool = False
+    regex: bool = False  # query is a regular expression; replacement may use \\1 group references
 
 
 @dataclass
@@ -44,11 +45,31 @@ class ReplaceResult:
     sections_changed: set[str] = field(default_factory=set)
 
 
+def _replacement(replacement: str, opts: SearchOptions):
+    """Literal text, or (regex mode) a callable expanding \\1 / \\g<name> group references."""
+    if not opts.regex:
+        return replacement
+
+    def fn(m: re.Match) -> str:
+        try:
+            return m.expand(replacement)
+        except (re.error, IndexError) as e:
+            raise ValueError(f"Invalid replacement: {e}") from e
+    return fn
+
+
 def compile_pattern(query: str, opts: SearchOptions) -> re.Pattern[str]:
-    body = re.escape(query)
+    body = query if opts.regex else re.escape(query)
     if opts.whole_word:
         body = rf"(?<!\w){body}(?!\w)"
-    return re.compile(body, 0 if opts.case_sensitive else re.IGNORECASE | re.UNICODE)
+    flags = re.UNICODE | (re.MULTILINE if opts.regex else 0) | (0 if opts.case_sensitive else re.IGNORECASE)
+    try:
+        pat = re.compile(body, flags)
+    except re.error as e:
+        raise ValueError(f"Invalid regular expression: {e}") from e
+    if pat.match("") and opts.regex and query:
+        raise ValueError("The expression matches an empty string, which would match everywhere")
+    return pat
 
 
 def _fields(block: Block, opts: SearchOptions):
@@ -116,7 +137,11 @@ def search_book(book: BookProject, query: str, opts: SearchOptions | None = None
     return hits
 
 
-def _replace_runs(runs: list[Run], pat: re.Pattern[str], repl: str,
+def _rep(m: re.Match, repl) -> str:
+    return repl(m) if callable(repl) else repl
+
+
+def _replace_runs(runs: list[Run], pat: re.Pattern[str], repl,
                   only_start: int | None = None) -> tuple[list[Run], int]:
     """Replace matches in formatted text. The replacement takes the formatting of the first
     matched character, so matches that cross formatting boundaries are handled too."""
@@ -129,10 +154,11 @@ def _replace_runs(runs: list[Run], pat: re.Pattern[str], repl: str,
     for m in pat.finditer(text):
         if only_start is not None and m.start() != only_start:
             continue
+        rep = _rep(m, repl)
         out_text.append(text[pos:m.start()])
         out_fmts.extend(fmts[pos:m.start()])
-        out_text.append(repl)
-        out_fmts.extend([fmts[m.start()] if m.start() < len(fmts) else Run('').fmt()] * len(repl))
+        out_text.append(rep)
+        out_fmts.extend([fmts[m.start()] if m.start() < len(fmts) else Run('').fmt()] * len(rep))
         pos = m.end()
         n += 1
     out_text.append(text[pos:])
@@ -147,17 +173,17 @@ def _replace_runs(runs: list[Run], pat: re.Pattern[str], repl: str,
     return res, n
 
 
-def _replace_str(text: str, pat: re.Pattern[str], repl: str,
+def _replace_str(text: str, pat: re.Pattern[str], repl,
                  only_start: int | None = None) -> tuple[str, int]:
     if only_start is None:
-        return pat.subn(lambda m: repl, text)
+        return pat.subn(lambda m: _rep(m, repl), text)
     for m in pat.finditer(text):
         if m.start() == only_start:
-            return text[:m.start()] + repl + text[m.end():], 1
+            return text[:m.start()] + _rep(m, repl) + text[m.end():], 1
     return text, 0
 
 
-def _apply(block: Block, fld: str, pat: re.Pattern[str], repl: str,
+def _apply(block: Block, fld: str, pat: re.Pattern[str], repl,
            only_start: int | None = None) -> int:
     """Replace inside one field of a block. Returns the number of replacements."""
     if fld == "runs" and hasattr(block, "runs"):
@@ -189,6 +215,7 @@ def replace_in_book(book: BookProject, query: str, replacement: str,
     if not query:
         return res
     pat = compile_pattern(query, opts)
+    repl = _replacement(replacement, opts)
     for s in _sections(book, opts):
         for b in s.blocks:
             fields_hit = [(f, t) for f, t in _fields(b, opts) if pat.search(t)]
@@ -198,7 +225,7 @@ def replace_in_book(book: BookProject, query: str, replacement: str,
                 res.skipped_locked += sum(len(pat.findall(t)) for _, t in fields_hit)
                 continue
             for fld, _ in fields_hit:
-                k = _apply(b, fld, pat, replacement)
+                k = _apply(b, fld, pat, repl)
                 if k:
                     res.replaced += k
                     res.sections_changed.add(s.id)
@@ -216,4 +243,4 @@ def replace_one(book: BookProject, hit: SearchHit, query: str, replacement: str,
     if block.locked:
         return False
     pat = compile_pattern(query, opts)
-    return _apply(block, hit.field, pat, replacement, hit.start) > 0
+    return _apply(block, hit.field, pat, _replacement(replacement, opts), hit.start) > 0

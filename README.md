@@ -3,7 +3,7 @@
 A local-first Windows desktop application that turns manuscripts into professionally formatted books and
 validated PDFs. Everything runs offline; manuscripts and images never leave your computer.
 
-**Status: 0.2.3.** See [docs/limitations.md](docs/limitations.md) for exactly what is
+**Status: 0.3.0.** See [docs/limitations.md](docs/limitations.md) for exactly what is
 and is not implemented.
 
 ## Quick start
@@ -37,8 +37,9 @@ python -m venv .venv
 | Design | **Book** tab: page size, margins (mirrored, gutter), typography, running headers/footers, numbering. **Styles** tab: edit any named style. **Templates**: preview, apply, duplicate, import/export, save your setup as a template |
 | Cover | **Book ▸ Cover design**: layered designer (text, images, rectangles, ellipses, lines, frames, 6 generated patterns), 10 presets, 8 palettes, image filters (B&W, sepia, brightness, contrast, saturation, blur, colour wash, flip), drag/resize/rotate, front and back. Exports: front PNG/PDF (digital), print front+back with bleed and crop marks, and a print wrap-around (back + spine + front) using your paper thickness |
 | Preview | **Preview** tab (F5): thumbnails, single page or two-page spread, zoom, click a block to jump to it, pages with problems are outlined |
+| Polish | **Book ▸ Typography cleanup**: typographic quotes (Romanian „ ”, English, German, French), dashes, ellipses, spacing, undoable. **Hyphenation** (Book tab, book language). **Pad page count** to a multiple of 2/4/8/16/32 for printers. **List of poems** in the contents. **Statistics**. **Go to** (Ctrl+G): page, chapter, heading or poem by name. Search supports **regular expressions**. Navigator ▸ **Organise**: split a long section into one section per poem or at headings, merge sections |
 | Check | **Validate** (F7): missing images, missing glyphs, low-resolution images, overflow, accidental blank pages … double-click an issue to jump to it |
-| Export | **Export** (Ctrl+E): Digital / Print / Proof PDF, DOCX, HTML, Markdown. Validate → review → write to a temp file → verify → atomic finalise. Existing files are never overwritten silently |
+| Export | **Export** (Ctrl+E): Digital / Print / Proof PDF, **EPUB 3**, DOCX, HTML, Markdown; **Export all formats** (Ctrl+Shift+E) writes a whole set into one folder, one format failing never stops the rest. Validate → review → write to a temp file → verify → atomic finalise. Existing files are never overwritten silently |
 | Save | `.bookforge` project (ZIP: JSON manifest + assets + original sources). Atomic saves keep a `.bak`; autosave + crash recovery |
 
 Keyboard shortcuts: **Help ▸ Keyboard shortcuts**.
@@ -62,7 +63,7 @@ Details and design decisions: [docs/architecture.md](docs/architecture.md).
 
 ## Testing
 
-`scripts\run_tests.bat` (or `pytest`) runs 246 tests that inspect real output: PDFs are opened with PyMuPDF
+`scripts\run_tests.bat` (or `pytest`) runs 300 tests that inspect real output: PDFs are opened with PyMuPDF
 (page size, metadata, extracted text incl. Romanian diacritics, embedded fonts, bookmarks, links, image bounding
 boxes, text positions versus the layout model), DOCX files are re-read with python-docx, archives are attacked
 with traversal / corruption / interruption scenarios, and the UI is driven headlessly with Qt's offscreen platform.

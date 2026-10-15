@@ -4,14 +4,13 @@ Honest list of what is **not** implemented or only partly implemented. Nothing h
 
 ## Not implemented (planned)
 
-* **EPUB export.** Not attempted: it cannot be validated within this release.
 * **RTF import.** No reliable offline RTF parser is bundled; the import dialog tells you to save as DOCX/TXT.
 * **OCR.** Scanned PDF pages are detected and reported, never converted to text.
 * **Footnotes at the page bottom.** Footnotes/endnotes are supported as *end notes* (a footnote block you place at
   the end of a chapter; DOCX imports collect them into a "Notes" section). No per-page footnote reservation.
 * **Automatic generation** of index, bibliography, list of figures/tables, figure numbering and cross-references.
   Bibliography/Index/Glossary sections exist and are edited manually (nothing is fabricated).
-* **Hyphenation**, kerning pairs beyond the font's own metrics, drop caps, text wrapping around images, text
+* **Kerning pairs beyond the font's own metrics, drop caps, text wrapping around images, text
   overlays on images, free-positioned (fixed-layout) elements, page backgrounds other than covers.
 * **Poetry:** one-poem-per-page and "(continued)" markers exist; separation pages between poems do not.
 * **Interface localisation.** The UI is English; strings are not yet routed through `tr()`. The document engine is
@@ -21,6 +20,17 @@ Honest list of what is **not** implemented or only partly implemented. Nothing h
   as such. Run your printer's preflight.
 
 ## Partial / behaviours to know
+
+* **EPUB 3** is reflowable only (no fixed-layout), with cover, contents, images, poems with line breaks and an NCX
+  for older readers. It is checked structurally by the app (package, manifest, spine, XHTML well-formedness,
+  link and image targets) but **not** with the W3C EpubCheck tool: run EpubCheck before submitting to a store.
+  Fonts are not embedded; page numbers, headers and print margins do not apply.
+* **Hyphenation** uses pyphen's pattern dictionaries (many languages incl. Romanian and English); it applies to
+  body paragraphs only (not poems, headings or code), words of 6+ letters, at least 2 letters before and 3 after
+  the break. Words with digits, apostrophes or hyphens are never split. Dictionary licences differ per language
+  (pyphen is MPL/LGPL/GPL; dictionaries come from LibreOffice).
+* **Typography cleanup** rules are language-agnostic apart from the quote style you choose; it cannot know whether a
+  dash in your text is a minus sign, so only ' - ' between words, '--' and dialogue dashes are converted.
 
 * **Poetry detection is a heuristic** (short lines, little end punctuation, varying indents, centring, soft line
   breaks, runs of short stanzas). The import report says how many poems were found; use the Poetry option

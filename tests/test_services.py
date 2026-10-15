@@ -300,3 +300,45 @@ def test_large_manuscript_roundtrip_and_search(tmp_path):
     elapsed = time.perf_counter() - t
     assert len(again.sections) == 300 and len(hits) == 240
     assert elapsed < 15, f"6000 blocks save/load/search took {elapsed:.1f}s"
+
+
+# ----------------------------------------------------------------- regex search
+def test_regex_search_and_replace_with_groups():
+    b = BookProject()
+    b.sections = [Section("S", "chapter", blocks=[
+        ParagraphBlock(runs=[Run("Data 12.03.2026 si 5.1.2027.")]),
+        PoetryBlock(text="linia 1\nlinia 22"), ParagraphBlock(runs=[Run("fara cifre")])])]
+    o = SearchOptions(regex=True)
+    hits = search_book(b, r"(\d{1,2})\.(\d{1,2})\.(\d{4})", o)
+    assert [h.matched for h in hits] == ["12.03.2026", "5.1.2027"]
+    res = replace_in_book(b, r"(\d{1,2})\.(\d{1,2})\.(\d{4})", r"\3-\2-\1", o)
+    assert res.replaced == 2 and b.sections[0].blocks[0].plain_text() == "Data 2026-03-12 si 2027-1-5."
+    replace_in_book(b, r"^linia (\d+)$", r"vers \1", o)  # ^ and $ work per line in poems
+    assert b.sections[0].blocks[1].text == "vers 1\nvers 22"
+    assert not search_book(b, r"\d{9}", o)
+
+
+def test_regex_keeps_formatting_and_respects_case_and_word_options():
+    b = BookProject()
+    b.sections = [Section("S", "chapter", blocks=[ParagraphBlock(runs=[Run("un Cat si "), Run("CATS", bold=True), Run(" cat")])])]
+    assert len(search_book(b, r"cats?", SearchOptions(regex=True))) == 3
+    assert len(search_book(b, r"cats?", SearchOptions(regex=True, case_sensitive=True))) == 1
+    assert len(search_book(b, r"cat", SearchOptions(regex=True, whole_word=True))) == 2
+    replace_in_book(b, r"(c)ats?", r"\1a", SearchOptions(regex=True))
+    para = b.sections[0].blocks[0]
+    assert para.plain_text() == "un Ca si Ca ca"
+    assert [(r.text, r.bold) for r in para.runs] == [("un Ca si ", False), ("Ca", True), (" ca", False)]
+
+
+def test_regex_errors_are_reported_not_raised_as_crashes():
+    import pytest
+    b = BookProject()
+    b.sections = [Section("S", "chapter", blocks=[ParagraphBlock(runs=[Run("text")])])]
+    with pytest.raises(ValueError, match="Invalid regular expression"):
+        search_book(b, "(unclosed", SearchOptions(regex=True))
+    with pytest.raises(ValueError, match="empty string"):
+        search_book(b, "x*", SearchOptions(regex=True))
+    with pytest.raises(ValueError, match="Invalid replacement"):
+        replace_in_book(b, "(t)ext", r"\2", SearchOptions(regex=True))
+    assert b.sections[0].blocks[0].plain_text() == "text"  # nothing half-applied
+    assert search_book(b, "(literal", SearchOptions()) == []  # without regex it is just text

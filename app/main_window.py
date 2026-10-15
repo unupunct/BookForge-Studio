@@ -18,12 +18,15 @@ from .services.import_service import commit_import
 from .services.validation_service import ValidationReport, validate_book
 from .ui import theme
 from .ui.book_navigator import BookNavigator
+from .ui.dialogs.export_all_dialog import ExportAllDialog
 from .ui.dialogs.export_dialog import ExportDialog
+from .ui.dialogs.goto_dialog import GoToDialog
 from .ui.dialogs.import_dialog import ImportDialog
 from .ui.dialogs.manuscript_dialog import ManuscriptDialog
 from .ui.dialogs.cover_editor import CoverDialog
 from .ui.dialogs.misc_dialogs import SettingsDialog, ValidationDialog
 from .ui.dialogs.search_dialog import SearchDialog
+from .ui.dialogs.stats_dialog import StatsDialog
 from .ui.dialogs.template_dialog import TemplateDialog
 from .ui.dialogs.typography_dialog import TypographyDialog
 from .ui.dialogs.wizard import NewBookWizard
@@ -38,7 +41,8 @@ SHORTCUTS = [
     ("Ctrl+Z / Ctrl+Y", "Undo / Redo"), ("Ctrl+B / I / U", "Bold / Italic / Underline"),
     ("Ctrl+K", "Hyperlink"), ("Ctrl+F", "Find in chapter"), ("F3 / Shift+F3", "Find next / previous"),
     ("Ctrl+Shift+F", "Search the whole book"), ("F5", "Toggle page preview"),
-    ("F7", "Validate book"), ("F2", "Rename section"), ("Alt+Up / Alt+Down", "Move section"),
+    ("F7", "Validate book"), ("Ctrl+G", "Go to page, chapter or poem"),
+    ("Ctrl+Shift+E", "Export all formats"), ("Ctrl+Shift+N", "New book from manuscript"), ("F2", "Rename section"), ("Alt+Up / Alt+Down", "Move section"),
     ("Page Up / Down", "Previous / next page in preview"), ("Ctrl+wheel", "Zoom preview"),
     ("Ctrl+,", "Settings"),
 ]
@@ -114,6 +118,8 @@ class MainWindow(QMainWindow):
         self.act_import = A("&Import manuscript…", self.import_manuscript, "Ctrl+I",
                             "Import DOCX, TXT, Markdown, HTML or PDF text")
         self.act_export = A("&Export…", self.export_book, "Ctrl+E", "Export PDF, DOCX, HTML or Markdown")
+        self.act_export_all = A("Export a&ll formats\u2026", self.export_all, "Ctrl+Shift+E",
+                                "Digital PDF, print PDF, EPUB, Word and more in one step")
         self.act_quit = A("E&xit", self.close, "Ctrl+Q")
         self.act_undo = A("&Undo", self.undo, QKeySequence.Undo, "Undo the last change")
         self.act_redo = A("&Redo", self.redo, QKeySequence("Ctrl+Y"), "Redo")
@@ -123,12 +129,14 @@ class MainWindow(QMainWindow):
         self.addAction(self.act_redo_alt)
         self.act_find_book = A("Search the &book…", self.show_search, "Ctrl+Shift+F",
                                "Find and replace across all chapters")
+        self.act_goto = A("&Go to\u2026", self.go_to, "Ctrl+G", "Jump to a page, chapter, heading or poem")
         self.act_preview = A("&Preview", self.toggle_preview, "F5", "Show or hide the page preview")
         self.act_validate = A("&Validate book", self.validate, "F7", "Check the book for problems")
         self.act_relink = A("&Relink missing images…", self.relink_missing, None,
                             "Point missing images at replacement files")
         self.act_typo = A("&Typography cleanup\u2026", self.typography_cleanup, None,
                           "Typographic quotes, dashes, ellipses and spacing for the whole book")
+        self.act_stats = A("&Statistics\u2026", self.show_stats, None, "Words, pages, poems, reading time")
         self.act_cover = A("&Cover design…", self.cover_design, None, "Design the front and back covers")
         self.act_templates = A("&Templates…", self.templates, None, "Browse and apply templates")
         self.act_settings = A("&Settings…", self.settings, "Ctrl+,", "Application settings")
@@ -149,6 +157,7 @@ class MainWindow(QMainWindow):
         f.addSeparator()
         f.addAction(self.act_import)
         f.addAction(self.act_export)
+        f.addAction(self.act_export_all)
         f.addSeparator()
         f.addAction(self.act_quit)
         e = mb.addMenu("&Edit")
@@ -158,6 +167,7 @@ class MainWindow(QMainWindow):
         e.addAction(self._action("&Find in chapter", self.editor.show_find, None,
                                  "Find and replace in the open chapter"))
         e.addAction(self.act_find_book)
+        e.addAction(self.act_goto)
         v = mb.addMenu("&View")
         v.addAction(self.act_preview)
         for d in self.findChildren(QDockWidget):
@@ -165,6 +175,7 @@ class MainWindow(QMainWindow):
         b = mb.addMenu("&Book")
         b.addAction(self.act_validate)
         b.addAction(self.act_typo)
+        b.addAction(self.act_stats)
         b.addAction(self.act_cover)
         b.addAction(self.act_relink)
         b.addAction(self.act_templates)
@@ -443,6 +454,10 @@ class MainWindow(QMainWindow):
         self.state.flush()
         ExportDialog(self.state, self).exec()
 
+    def export_all(self) -> None:
+        self.state.flush()
+        ExportAllDialog(self.state, self).exec()
+
     def undo(self) -> None:
         if self.editor.edit.hasFocus() and self.editor.edit.document().isUndoAvailable():
             self.editor.undo()
@@ -466,6 +481,24 @@ class MainWindow(QMainWindow):
             sid = self.navigator.current_id()
             if sid:
                 self.preview.show_section(sid)
+
+    def go_to(self) -> None:
+        dlg = GoToDialog(self.state, self)
+        dlg.chosen.connect(self._go_to_entry)
+        dlg.exec()
+
+    def _go_to_entry(self, entry) -> None:
+        if entry.kind == "page":
+            self.tabs.setCurrentWidget(self.preview)
+            self.preview.show_page(entry.page_index)
+            return
+        if entry.section_id:
+            self.navigator.select(entry.section_id)
+        self.tabs.setCurrentWidget(self.editor)
+        if entry.block_id:
+            self.editor.scroll_to_block(entry.block_id)
+        if entry.page_index is not None and self.state.layout:
+            self.preview.show_page(entry.page_index)
 
     def show_search(self) -> None:
         if self.search_dialog is None:
@@ -572,6 +605,9 @@ class MainWindow(QMainWindow):
         dlg = TypographyDialog(self.state, self)
         dlg.applied.connect(self._after_replace)
         dlg.exec()
+
+    def show_stats(self) -> None:
+        StatsDialog(self.state, self).exec()
 
     def cover_design(self) -> None:
         self.state.flush()

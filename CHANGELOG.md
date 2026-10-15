@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.3.0 – ten improvements
+
+1. **Typography cleanup** (Book menu): Romanian/English/German/French quotes, dashes, ellipses, spacing; counts first,
+   one undoable step, formatting kept, code/locked blocks untouched.
+2. **List of poems**: contents page can list every poem (titles with numbers, or first lines) with real page
+   numbers and links; collections of 10+ poems get it automatically on import. Chapters whose title is not printed
+   are no longer listed.
+3. **EPUB 3 export** with cover, contents (incl. poem index), images (WebP converted), poems with line breaks,
+   split of very long sections into several files, and a structural checker that runs after every export.
+4. **Hyphenation** (pyphen) for justified body text in the book's language: fewer rivers, measured by tests.
+5. **Page-count padding** to multiples of 2/4/8/16/32 with unnumbered blank leaves before the back cover.
+6. **Regular-expression** search and replace (groups \1, per-line anchors in poems, clear error messages).
+7. **Organise sections**: split a section per poem or at headings, merge with next; undoable.
+8. **Book statistics** dialog (words, characters, pages, poems, verse lines, reading time, longest sections).
+9. **Export all formats** in one step (digital PDF, print PDF, EPUB, Word, HTML, Markdown, print cover), each format
+   isolated from the others' failures.
+10. **Go to** (Ctrl+G): jump to a page (printed or sheet number), chapter, heading, poem or recipe by name, ignoring
+    diacritics and case.
+
+Also: the sample 168-poem collection now imports with a contents page that lists all poems (poem 9, the word
+"Photos", was removed on request); 300 automated tests; self-test also checks EPUB and hyphenation dictionaries.
+
 ## 0.2.3
 
 ### Added

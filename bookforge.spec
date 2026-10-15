@@ -3,13 +3,14 @@
 from PyInstaller.utils.hooks import collect_data_files
 
 datas = [("app/templates", "app/templates")]
+datas += collect_data_files("pyphen")  # hyphenation dictionaries
 datas += collect_data_files("reportlab")  # ReportLab's bundled Vera fonts (fallback only)
 
 a = Analysis(
     ["main.py"],
     pathex=["."],
     datas=datas,
-    hiddenimports=["docx", "lxml", "lxml.etree", "markdown_it", "pymupdf", "PIL"],
+    hiddenimports=["pyphen", "docx", "lxml", "lxml.etree", "markdown_it", "pymupdf", "PIL"],
     excludes=["tkinter", "matplotlib", "numpy", "scipy", "pandas", "PySide6.QtWebEngineCore",
               "PySide6.QtWebEngineWidgets", "PySide6.Qt3DCore", "PySide6.QtQuick", "PySide6.QtQml",
               "PySide6.QtMultimedia", "PySide6.QtCharts", "PySide6.QtDataVisualization"],

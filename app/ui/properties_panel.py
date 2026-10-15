@@ -268,6 +268,14 @@ class BookTab(QWidget):
         self.m_out = self._dspin(pf, "Outer margin (mm)", "margins.outer", 5, 100, 1)
         self.gutter = self._dspin(pf, "Gutter (mm)", "gutter_mm", 0, 30, 0.5)
         self.bleed = self._dspin(pf, "Print bleed (mm)", "bleed_mm", 0, 10, 0.5)
+        self.multiple = QComboBox()
+        self.multiple.setToolTip("Printers bind in signatures: blank pages are added before the back cover "
+                                 "until the page count is a multiple of this number")
+        for label, v in (("Off", 0), ("2 pages", 2), ("4 pages", 4), ("8 pages", 8), ("16 pages", 16), ("32 pages", 32)):
+            self.multiple.addItem(label, v)
+        self.multiple.activated.connect(lambda _: self._set("page_multiple", self.multiple.currentData()))
+        pf.addRow("Pad page count to a multiple of", self.multiple)
+        self._widgets["page_multiple"] = (self.multiple, self.multiple.currentData)
         outer.addWidget(page)
 
         typo = QGroupBox("Typography")
@@ -283,6 +291,7 @@ class BookTab(QWidget):
         self._dspin(tf, "Paragraph spacing (pt)", "paragraph_spacing", 0, 40, 1)
         self._dspin(tf, "First-line indent (pt)", "first_line_indent", 0, 60, 1)
         self._check(tf, "Justify text", "justify")
+        self._check(tf, "Hyphenate long words (book language)", "hyphenate")
         self._ispin(tf, "Widow lines", "widow_lines", 1, 4)
         self._ispin(tf, "Orphan lines", "orphan_lines", 1, 4)
         outer.addWidget(typo)

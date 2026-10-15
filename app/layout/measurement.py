@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from ..domain.content_blocks import Run
 from ..domain.styles import ResolvedStyle
+from .hyphenation import split_points
 from .model import Glyphs
 from .typography import fonts
 
@@ -90,7 +91,23 @@ class BrokenLine:
     last: bool  # last line of paragraph or ends with a hard break
 
 
-def break_lines(tokens: list[Token], first_width: float, rest_width: float) -> list[BrokenLine]:
+def _hyphenate(piece: Token, room: float, hyph) -> tuple[Token, Token] | None:
+    """Split a word so that `head-` fits into `room`. Returns (head with hyphen, tail) or None."""
+    word = piece.text
+    for pos in reversed(split_points(hyph, word)):
+        head_text = word[:pos] + "-"
+        w = fonts.width(head_text, piece.font, piece.size)
+        if w <= room:
+            head = Token(head_text, piece.font, piece.size, piece.color, piece.underline, piece.link, w,
+                         False, False, piece.rise, piece.strike)
+            tail_text = word[pos:]
+            tail = Token(tail_text, piece.font, piece.size, piece.color, piece.underline, piece.link,
+                         fonts.width(tail_text, piece.font, piece.size), False, False, piece.rise, piece.strike)
+            return head, tail
+    return None
+
+
+def break_lines(tokens: list[Token], first_width: float, rest_width: float, hyph=None) -> list[BrokenLine]:
     lines: list[BrokenLine] = []
     cur: list[Token] = []
     cur_w = 0.0
@@ -119,6 +136,18 @@ def break_lines(tokens: list[Token], first_width: float, rest_width: float) -> l
             pieces = _split_long_word(tok, min(avail, rest_width) if not cur else rest_width)
         for piece in pieces:
             space_w = sum(t.width for t in pending)
+            if cur and hyph is not None and cur_w + space_w + piece.width > avail + 0.01:
+                split = _hyphenate(piece, avail - cur_w - space_w, hyph)
+                if split:  # fill the line with the first part and carry the rest over
+                    head, tail = split
+                    cur.extend(pending)
+                    cur_w += space_w
+                    pending = []
+                    cur.append(head)
+                    cur_w += head.width
+                    flush(False)
+                    piece = tail
+                    space_w = 0.0
             if cur and cur_w + space_w + piece.width > avail + 0.01:
                 pending = []
                 flush(False)

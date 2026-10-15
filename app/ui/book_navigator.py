@@ -8,6 +8,8 @@ from PySide6.QtWidgets import (QAbstractItemView, QHBoxLayout, QInputDialog, QLa
                                QVBoxLayout, QWidget)
 
 from ..application_state import AppState
+from ..services.section_tools import (SectionToolError, merge_with_next, split_by_headings,
+                                      split_by_poems)
 from ..domain.sections import (ALL_KINDS, BACK_KINDS, FRONT_KINDS, KIND_LABELS, MAIN_KINDS,
                                Section, matter_of)
 from . import theme
@@ -273,11 +275,42 @@ class BookNavigator(QWidget):
             m.addAction("Rename\tF2", self.rename_current)
             m.addAction("Duplicate", self.duplicate_current)
             m.addAction("Hide from book" if sec and sec.enabled else "Include in book", self.toggle_enabled)
+            organise = m.addMenu("Organise")
+            organise.addAction("Split into one section per poem\u2026", self.split_poems)
+            organise.addAction("Split at every Heading 1\u2026", lambda: self.split_headings(1))
+            organise.addAction("Split at every Heading 2\u2026", lambda: self.split_headings(2))
+            organise.addAction("Merge with the next section\u2026", self.merge_next)
             m.addAction("Move up", lambda: self._move(-1))
             m.addAction("Move down", lambda: self._move(1))
             m.addSeparator()
             m.addAction("Remove…", self.delete_current)
         m.exec(self.tree.viewport().mapToGlobal(pos))
+
+    def _organise(self, label: str, question: str, fn) -> None:
+        sid = self.current_id()
+        if not sid:
+            return
+        if QMessageBox.question(self, label, question + "\n\nYou can undo this with Ctrl+Z.") != QMessageBox.Yes:
+            return
+        try:
+            result = self.state.edit(label, lambda p: fn(p, sid))
+        except SectionToolError as e:
+            QMessageBox.information(self, label, str(e))
+            return
+        first = result[0] if isinstance(result, list) and result else result
+        self.rebuild()
+        if first is not None:
+            self.select(first.id)
+
+    def split_poems(self) -> None:
+        self._organise("Split into poems", "Make every poem in this section its own section?", split_by_poems)
+
+    def split_headings(self, level: int) -> None:
+        self._organise(f"Split at Heading {level}", f"Start a new section at every Heading {level}?",
+                       lambda p, sid: split_by_headings(p, sid, level))
+
+    def merge_next(self) -> None:
+        self._organise("Merge sections", "Append the next section to this one?", merge_with_next)
 
     def _apply_drop(self) -> None:
         def rec(item) -> tuple[str, list]:

@@ -151,6 +151,7 @@ class BookSettings:
     paragraph_spacing: float = 0.0
     first_line_indent: float = 14.0
     justify: bool = True
+    hyphenate: bool = False  # break long words at the line end (language of the book)
     widow_lines: int = 2
     orphan_lines: int = 2
     # Chapter and section opening rules
@@ -179,6 +180,7 @@ class BookSettings:
     # Print
     gutter_mm: float = 0.0
     bleed_mm: float = 3.0
+    page_multiple: int = 0  # print: pad with blank leaves to a multiple of 2/4/8/16/32 pages (0 = off)
     export_profile: str = "digital"
     paper_thickness_mm: float = 0.1  # user/printer supplied; never a universal constant
     cover: CoverDesign = field(default_factory=CoverDesign)

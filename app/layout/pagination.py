@@ -291,6 +291,23 @@ class Paginator:
         if not self.pages:
             self._append_page(blank="intentional").used = True
             self.issues.append(LayoutIssue("info", "empty_book", "The book has no content", 0))
+        mult = self.settings.page_multiple
+        if mult and mult > 1 and len(self.pages) % mult:
+            # Printers bind in signatures: add intentional blank leaves before a back cover (if any).
+            back = self.pages.pop() if len(self.pages) > 1 and self.pages[-1].full_bleed else None
+            add = (-(len(self.pages) + (1 if back else 0))) % mult
+            self.cur = None
+            self.matter = "back"
+            for _ in range(add):
+                self._append_page(blank="intentional").used = True
+            added = add
+            if back is not None:
+                back.index = len(self.pages)
+                back.side = "recto" if (not self.settings.facing_pages or back.index % 2 == 0) else "verso"
+                self.pages.append(back)
+            self.issues.append(LayoutIssue("info", "pages_padded",
+                                           f"{added} blank page(s) added so the page count is a multiple of {mult}",
+                                           len(self.pages) - 1))
 
 
 # ----------------------------------------------------------------- decoration

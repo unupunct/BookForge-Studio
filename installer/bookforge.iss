@@ -1,6 +1,6 @@
 ; Inno Setup script for BookForge Studio. Build with scripts\build_installer.bat
 #define AppName "BookForge Studio"
-#define AppVersion "0.2.3"
+#define AppVersion "0.3.0"
 #define AppExe "BookForgeStudio.exe"
 
 [Setup]

@@ -14,7 +14,9 @@ import pymupdf
 from .domain.content_blocks import ParagraphBlock, PoetryBlock, Run
 from .domain.sections import Section
 from .persistence.project_archive import load_project, save_project
-from .services.export_service import export_pdf
+from .layout.hyphenation import get_hyphenator
+from .services.epub_check import check_epub
+from .services.export_service import export_other, export_pdf
 from .services.project_service import NewBookSpec, create_project
 from .services.template_service import TemplateService
 
@@ -36,12 +38,17 @@ def run(out_dir: str) -> int:
         reopened = load_project(project_path)
         pdf = out / "selftest.pdf"
         res = export_pdf(reopened, pdf, "digital", overwrite=True, allow_errors=True)
+        epub = out / "selftest.epub"
+        export_other(reopened, epub, "epub", overwrite=True)
+        report["epub_problems"] = check_epub(epub)
+        report["hyphenation"] = get_hyphenator("ro") is not None
         doc = pymupdf.open(str(pdf))
         text = "\n".join(p.get_text() for p in doc)
         report.update(pages=doc.page_count, bytes=pdf.stat().st_size, fonts_embedded=res.preflight["all_fonts_embedded"],
                       romanian_ok="ĂÂÎȘȚ ăâîșț" in text, poem_ok="Line one" in text)
         report["ok"] = bool(report["romanian_ok"] and report["poem_ok"] and report["fonts_embedded"]
-                            and doc.page_count >= 4 and report["templates"] >= 13)
+                            and doc.page_count >= 4 and report["templates"] >= 13
+                            and not report["epub_problems"] and report["hyphenation"])
     except Exception as e:  # report every failure instead of crashing silently
         report["error"] = f"{type(e).__name__}: {e}"
     (out / "selftest.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
