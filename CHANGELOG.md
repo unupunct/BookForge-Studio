@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.2.1 (found by importing a real 169-poem Facebook export)
+
+### Fixed
+- A whole collection was imported as ONE poem (521 pages). Poems are now split at bold header lines; right-aligned
+  signature/hashtag lines end a poem and are printed right-aligned *with* it (new `signature` field, editable in
+  Block properties); lone dash/asterisk separator lines are not imported as text (reported).
+- Centred opening lines (title, subtitle, note) become the book's title page text instead of a fake poem.
+- A tool name in the document properties ("python-docx") is no longer used as the author / copyright holder.
+- A page break right after the title block no longer leaves an empty page; a single chapter named like the book no
+  longer repeats the title above the poems.
+- A poem title could be stranded at the bottom of a page when the poem is longer than a page.
+- Validation lists repeated informational notes (poem continues, wrapped code) once with a count.
+
+### Added
+- Import options "Post headers" (keep / keep only the number / remove) and "Signatures" (drop repeated boilerplate /
+  keep / remove). Defaults give a clean book: numbered titles, no boilerplate hashtag.
+- 10 more regression tests (collection structure, defaults, options, signature layout, orphan titles).
+
+
 ## 0.2.0
 
 ### Added

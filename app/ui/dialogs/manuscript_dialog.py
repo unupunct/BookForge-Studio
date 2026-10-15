@@ -54,6 +54,14 @@ class ManuscriptDialog(QDialog):
         self.poetry.addItem("Detect poems automatically", "auto")
         self.poetry.addItem("The whole text is poetry", "always")
         self.poetry.addItem("No poetry (prose only)", "never")
+        self.headers = QComboBox()
+        self.headers.addItem("Post headers (numbered dates): keep only the number", "number")
+        self.headers.addItem("Post headers: keep as poem titles", "keep")
+        self.headers.addItem("Post headers: remove", "drop")
+        self.sigs = QComboBox()
+        self.sigs.addItem("Signature lines: drop repeated boilerplate (#hashtag), keep others", "auto")
+        self.sigs.addItem("Signature lines: print all under their poems", "keep")
+        self.sigs.addItem("Signature lines: remove all", "drop")
         self.split = QComboBox()
         self.split.addItem("Heading 1 starts a chapter", 1)
         self.split.addItem("Heading 2 starts a chapter", 2)
@@ -68,6 +76,8 @@ class ManuscriptDialog(QDialog):
         form.addRow("Title", self.title)
         form.addRow("Author", self.author)
         form.addRow("Poetry", self.poetry)
+        form.addRow("Post headers", self.headers)
+        form.addRow("Signatures", self.sigs)
         form.addRow("Chapters", self.split)
         form.addRow("Text encoding", self.encoding)
         form.addRow("", self.keep)
@@ -109,7 +119,8 @@ class ManuscriptDialog(QDialog):
     def options(self) -> ImportOptions:
         return ImportOptions(encoding=self.encoding.currentData(), split_level=self.split.currentData(),
                              poetry_mode=self.poetry.currentData(), keep_formatting=self.keep.isChecked(),
-                             update_metadata=True)
+                             header_lines=self.headers.currentData(),
+                             signature_lines=self.sigs.currentData(), update_metadata=True)
 
     def _parse(self) -> None:
         p = self.path.text().strip().strip('"')

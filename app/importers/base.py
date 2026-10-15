@@ -26,6 +26,8 @@ class ImportOptions:
     update_metadata: bool = False  # set book title from the document when it is still default
     poetry_mode: str = "auto"  # auto | always | never: keep verse line by line
     keep_formatting: bool = True  # keep alignment/indent/spacing that differs from the body text
+    header_lines: str = "number"  # numbered date headers on poems: keep | number | drop
+    signature_lines: str = "auto"  # right-aligned lines: auto (drop only boilerplate repeated 3+ times) | keep | drop
 
 
 @dataclass
@@ -76,6 +78,8 @@ class ImportResult:
     report: ImportReport
     title: str | None = None
     author: str | None = None
+    subtitle: str | None = None
+    description: str | None = None
 
 
 # (data, filename) -> asset id, or None when the image is rejected

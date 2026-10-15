@@ -1,6 +1,6 @@
 [project]
 name = "bookforge-studio"
-version = "0.2.0"
+version = "0.2.1"
 description = "Local-first desktop book creation and publishing application"
 requires-python = ">=3.11"
 dependencies = [

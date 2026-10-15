@@ -172,10 +172,17 @@ def create_from_manuscript(spec: NewBookSpec, staged, options, templates: Templa
     from .import_service import commit_import
     book = create_project(spec, templates)
     book.sections = [s for s in book.sections if s.kind != "chapter"]  # drop the empty starter chapter
-    commit_import(book, staged, options)
+    new_sections = commit_import(book, staged, options)
     res = staged.result
     if spec.title.strip() in ("", "Untitled Book") and res.title:
         book.metadata.title = res.title
     if not book.metadata.author and getattr(res, "author", None):
         book.metadata.author = res.author
+    chapters = [s for s in new_sections if s.kind == "chapter"]
+    if len(chapters) == 1 and chapters[0].title.strip().lower() == book.metadata.title.strip().lower():
+        chapters[0].show_title = False  # the title page already carries the book's name
+    if getattr(res, "subtitle", None) and not book.metadata.subtitle:
+        book.metadata.subtitle = res.subtitle
+    if getattr(res, "description", None) and not book.metadata.description:
+        book.metadata.description = res.description
     return book

@@ -3,7 +3,7 @@
 A local-first Windows desktop application that turns manuscripts into professionally formatted books and
 validated PDFs. Everything runs offline; manuscripts and images never leave your computer.
 
-**Status: 0.2.0.** See [docs/limitations.md](docs/limitations.md) for exactly what is
+**Status: 0.2.1.** See [docs/limitations.md](docs/limitations.md) for exactly what is
 and is not implemented.
 
 ## Quick start
@@ -31,7 +31,7 @@ python -m venv .venv
 | Step | How |
 |---|---|
 | Create a book | **File ▸ New book** – wizard with 10 category profiles and 33 templates (incl. 10 novel and 10 poetry designs). **File ▸ New book from manuscript** builds a finished book straight from a DOCX/TXT/Markdown file |
-| Import a manuscript | **Import** (Ctrl+I): DOCX, TXT (any encoding), Markdown, HTML, text of PDFs. You see an import report before anything is added. Originals are never modified; a snapshot is stored in the project. Bold/italic/underline/strike, super/subscript, centring, indents and spacing that differ from the body text are kept; poems are recognised (or forced via the Poetry option) and keep every line, indentation and blank line; "Chapter N" lines become chapters when the file has no Heading styles |
+| Import a manuscript | **Import** (Ctrl+I): DOCX, TXT (any encoding), Markdown, HTML, text of PDFs. You see an import report before anything is added. Originals are never modified; a snapshot is stored in the project. Bold/italic/underline/strike, super/subscript, centring, indents and spacing that differ from the body text are kept; poems are recognised (or forced via the Poetry option) and keep every line, indentation and blank line; "Chapter N" lines become chapters when the file has no Heading styles. Collections exported one post per poem (bold header, poem, hashtag, separator) are split into individual poems; numbered date headers can be kept, shortened to the number (default) or removed, and a hashtag repeated on every post is dropped (default) |
 | Organise | Book navigator: add / rename / duplicate / hide / remove, drag-and-drop or Alt+↑/↓, nested sections |
 | Write | Rich-text editor on structured blocks: headings, bold/italic/underline, inline code, links, lists, quotes, code blocks, poetry (line breaks kept), scene breaks, images with captions, tables, recipes, textbook callouts, find & replace |
 | Design | **Book** tab: page size, margins (mirrored, gutter), typography, running headers/footers, numbering. **Styles** tab: edit any named style. **Templates**: preview, apply, duplicate, import/export, save your setup as a template |
@@ -62,7 +62,7 @@ Details and design decisions: [docs/architecture.md](docs/architecture.md).
 
 ## Testing
 
-`scripts\run_tests.bat` (or `pytest`) runs 232 tests that inspect real output: PDFs are opened with PyMuPDF
+`scripts\run_tests.bat` (or `pytest`) runs 242 tests that inspect real output: PDFs are opened with PyMuPDF
 (page size, metadata, extracted text incl. Romanian diacritics, embedded fonts, bookmarks, links, image bounding
 boxes, text positions versus the layout model), DOCX files are re-read with python-docx, archives are attacked
 with traversal / corruption / interruption scenarios, and the UI is driven headlessly with Qt's offscreen platform.

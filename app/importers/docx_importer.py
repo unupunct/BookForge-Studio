@@ -16,6 +16,7 @@ from ..domain.content_blocks import (Block, CodeBlock, FootnoteBlock, HeadingBlo
                                      ListBlock, PageBreakBlock, ParagraphBlock, QuoteBlock, Run,
                                      TableBlock, merge_runs, runs_text)
 from ..domain.sections import Section
+from .structure import apply_header_policy, extract_title_block
 from .postprocess import (Blank, convert_poetry, normalise_paragraph_format,
                           promote_chapter_headings)
 from .base import (ImageSink, ImportFailure, ImportOptions, ImportReport, ImportResult,
@@ -389,9 +390,18 @@ def import_docx(path: Path, raw: bytes, options: ImportOptions, sink: ImageSink)
     blocks = conv.blocks
     while blocks and isinstance(blocks[-1], (PageBreakBlock, Blank)):
         blocks.pop()
+    GENERIC_AUTHORS = {"python-docx", "unknown", "user", "admin", "author", "microsoft office user", "office",
+                       "owner", "default"}
+    subtitle = description = None
+    if conv.title is None:  # no Title style: centred opening lines are the title page text
+        t, subtitle, description, blocks = extract_title_block(blocks, report)
+        conv.title = t or conv.title
+    while blocks and isinstance(blocks[0], (PageBreakBlock, Blank)):  # leading breaks only leave blank pages
+        blocks.pop(0)
     blocks = promote_chapter_headings(blocks, options.split_level, options.chapter_pattern, report)
     mode = "always" if options.preserve_line_breaks else options.poetry_mode
-    blocks = convert_poetry(blocks, mode, report)
+    blocks = convert_poetry(blocks, mode, report, signature=options.signature_lines)
+    apply_header_policy(blocks, options.header_lines, report)
     if options.keep_formatting:
         normalise_paragraph_format(blocks)
     else:
@@ -407,4 +417,7 @@ def import_docx(path: Path, raw: bytes, options: ImportOptions, sink: ImageSink)
         report.count("notes", len(conv.footnotes))
     props = doc.core_properties
     title = conv.title or (props.title or None)
-    return ImportResult(sections, report, title, props.author or None)
+    author = props.author if props.author and props.author.strip().lower() not in GENERIC_AUTHORS else None
+    res = ImportResult(sections, report, title, author)
+    res.subtitle, res.description = subtitle, description
+    return res

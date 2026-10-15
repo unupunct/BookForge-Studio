@@ -332,6 +332,14 @@ def poetry_flows(block: PoetryBlock, ctx: BuildContext) -> list[Flow]:
         pending_gap = 0.0
         atoms.extend(line_atoms)
         nlines += 1
+    if block.signature.strip():  # printed with the poem's last lines, never alone on a page
+        sig_style = replace(style, italic=True, font_size=style.font_size * 0.85, align="right",
+                            left_indent=0.0, color="#666666")
+        sig = text_atoms(plain_runs(block.signature.strip()), sig_style, ctx, block.id, align="right",
+                         decorate=False)
+        if sig:
+            sig[0].gap_before = leading * 0.6
+            atoms.extend(sig)
     if block.continuation_marker:
         face = fonts.face(style.font_family, False, True)
         sz = style.font_size * 0.85

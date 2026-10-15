@@ -58,6 +58,14 @@ class ImportDialog(QDialog):
         self.poetry.addItem("Poetry: detect poems automatically", "auto")
         self.poetry.addItem("Poetry: the whole text is verse", "always")
         self.poetry.addItem("Poetry: none (prose only)", "never")
+        self.headers = QComboBox()
+        self.headers.addItem("Post headers (numbered dates): keep only the number", "number")
+        self.headers.addItem("Post headers: keep as poem titles", "keep")
+        self.headers.addItem("Post headers: remove", "drop")
+        self.sigs = QComboBox()
+        self.sigs.addItem("Signature lines: drop repeated boilerplate (#hashtag), keep others", "auto")
+        self.sigs.addItem("Signature lines: print all under their poems", "keep")
+        self.sigs.addItem("Signature lines: remove all", "drop")
         self.keep = QCheckBox("Keep centring, indents and spacing that differ from the body text")
         self.keep.setChecked(True)
         self.meta = QCheckBox("Use the document title as the book title if still unset")
@@ -68,6 +76,8 @@ class ImportDialog(QDialog):
         form.addRow("", self.detect)
         form.addRow("Poetry", self.poetry)
         form.addRow("", self.keep)
+        form.addRow("Post headers", self.headers)
+        form.addRow("Signatures", self.sigs)
         form.addRow("", self.meta)
         lay.addLayout(form)
 
@@ -103,6 +113,7 @@ class ImportDialog(QDialog):
             encoding=self.encoding.currentData(), split_level=self.split.currentData(),
             chapter_pattern=self.pattern.text().strip() or None, detect_title=self.detect.isChecked(),
             poetry_mode=self.poetry.currentData(), keep_formatting=self.keep.isChecked(),
+            header_lines=self.headers.currentData(), signature_lines=self.sigs.currentData(),
             update_metadata=self.meta.isChecked())
 
     def _parse(self) -> None:

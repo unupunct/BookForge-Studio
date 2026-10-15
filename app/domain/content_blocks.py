@@ -228,6 +228,7 @@ class PoetryBlock(Block):
     one_per_page: bool = False
     continuation_marker: bool = True  # print "(continued)" when a poem spans pages
     align: str = ""  # "" = follow the poetry style (template); left | center | right
+    signature: str = ""  # right-aligned line after the poem (hashtag, date, signature)
 
     def plain_text(self) -> str:
         return (self.title + "\n" if self.title else "") + self.text

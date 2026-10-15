@@ -95,7 +95,17 @@ def validate_book(book: BookProject, layout: LayoutResult | None = None,
     _check_glyphs(book, rep)
 
     if layout is not None:
+        counts: dict[str, list] = {}
         for i in layout.issues:
+            if i.severity == "info" and i.code in ("poem_continues", "code_wrapped", "poem_page"):
+                counts.setdefault(i.code, []).append(i)
+        for code, items in counts.items():
+            if len(items) > 3:  # one summary instead of hundreds of identical notes
+                rep.add("info", code, f"{len(items)} × {items[0].message.lower()}",
+                        page_index=items[0].page_index, block_id=items[0].block_id)
+        for i in layout.issues:
+            if i.code in counts and len(counts[i.code]) > 3:
+                continue
             if i.code in ("overflow", "missing_asset", "layout_loop"):
                 sev = "error"
             elif i.code in ("accidental_blank_page", "image_scaled"):

@@ -12,6 +12,7 @@ from collections import Counter
 
 from ..domain.content_blocks import Block, HeadingBlock, ParagraphBlock, PoetryBlock, Run
 from .base import ImportReport
+from .structure import role_of
 
 SENTENCE_END = re.compile(r"[.!?…”\"»)]\s*$")
 SOFT = chr(31)  # marks a soft line break inside a paragraph (Markdown newline, ...)
@@ -65,6 +66,9 @@ class _Stanza:
         self.blanks_before = blanks_before
         self.paras: list[ParagraphBlock] = []
         self.verse = False
+        self.kind = "text"  # text | tail (signature/hashtag) | ornament (separator line)
+        self.title: ParagraphBlock | None = None  # bold header line that opens a poem
+        self.starts_poem = False
 
     def lines(self) -> list[str]:
         return [l for p in self.paras for l in lines_of(p)]
@@ -83,9 +87,20 @@ def _stanzas(run: list) -> list[_Stanza]:
         if isinstance(item, Blank):
             blanks += 1
             continue
-        if blanks or not out:
-            out.append(_Stanza(blanks))
-        out[-1].paras.append(item)
+        role = role_of(item)
+        if role in ("tail", "ornament"):
+            s = _Stanza(blanks)
+            s.kind = role
+            s.paras.append(item)
+            out.append(s)
+        elif role == "title":
+            s = _Stanza(blanks)
+            s.title, s.starts_poem = item, True
+            out.append(s)
+        else:
+            if blanks or not out or out[-1].kind != "text":
+                out.append(_Stanza(blanks))
+            out[-1].paras.append(item)
         blanks = 0
     return out
 
@@ -101,6 +116,9 @@ def _is_title(p: ParagraphBlock, lines_after: int) -> bool:
 
 def _classify(stanzas: list[_Stanza], mode: str, deliberate: bool) -> None:
     for s in stanzas:
+        if s.kind != "text" or not s.paras:
+            s.verse = False
+            continue
         s.verse = mode == "always" or looks_like_verse(
             s.lines(), soft_breaks=s.soft(deliberate), centered=s.centered())
     if mode == "always":
@@ -128,7 +146,7 @@ def _classify(stanzas: list[_Stanza], mode: str, deliberate: bool) -> None:
     while changed:  # spreads outwards from confident verse until nothing more joins
         changed = False
         for i, s in enumerate(stanzas):
-            if s.verse:
+            if s.verse or s.kind != "text" or s.starts_poem:
                 continue
             lines = [l.strip() for l in s.lines() if l.strip()]
             if not lines or len(lines) > 4 or statistics.mean(len(l) for l in lines) > 60:
@@ -145,26 +163,40 @@ def _build_poem(group: list[_Stanza]) -> PoetryBlock:
     title = ""
     first = group[0]
     total_lines = sum(1 for s in group for l in s.lines() if l.strip())
-    if len(first.paras) == 1 and len(group) > 1 and _is_title(first.paras[0], total_lines - 1):
+    if first.title is not None:
+        title = first.title.plain_text().strip()
+    elif len(first.paras) == 1 and len(group) > 1 and _is_title(first.paras[0], total_lines - 1):
         title = first.paras[0].plain_text().strip()
         group = group[1:]
     lines: list[str] = []
-    for idx, s in enumerate(group):
-        if idx:
+    for s in group:
+        body = s.lines()
+        if not body:
+            continue
+        if lines:
             lines.extend([""] * max(s.blanks_before, 1))  # every blank line the author left counts
-        lines.extend(s.lines())
+        lines.extend(body)
     poem = PoetryBlock(text="\n".join(l.rstrip() for l in lines).strip("\n"), title=title)
-    if all(p.align == "center" for s in group for p in s.paras):
+    paras = [p for s in group for p in s.paras]
+    if paras and all(p.align == "center" for p in paras):
         poem.align = "center"
     return poem
 
 
-def convert_poetry(blocks: list, mode: str, report: ImportReport, deliberate_breaks: bool = True) -> list:
+def convert_poetry(blocks: list, mode: str, report: ImportReport, deliberate_breaks: bool = True,
+                   signature: str = "auto") -> list:
     """mode: auto | always | never. Returns blocks with verse turned into PoetryBlocks."""
     if mode == "never":
         return [b for b in blocks if not isinstance(b, Blank)]
     out: list = []
-    found = 0
+    found = dropped = removed = 0
+    tails: list[str] = []
+    repeated_tails: set[str] = set()
+    if signature == "auto":  # boilerplate: the very same right-aligned line closing 3+ posts
+        counts = __import__("collections").Counter(
+            b.plain_text().strip() for b in blocks
+            if isinstance(b, ParagraphBlock) and role_of(b) == "tail")
+        repeated_tails = {t for t, n in counts.items() if n >= 3}
     i = 0
     while i < len(blocks):
         if not isinstance(blocks[i], (ParagraphBlock, Blank)):
@@ -178,19 +210,53 @@ def convert_poetry(blocks: list, mode: str, report: ImportReport, deliberate_bre
         _classify(stanzas, mode, deliberate_breaks)
         k = 0
         while k < len(stanzas):
-            if not stanzas[k].verse:
-                out.extend(stanzas[k].paras)
+            s = stanzas[k]
+            if s.kind == "ornament":
+                dropped += 1  # a lone dash/asterisks line only separated posts in the source
                 k += 1
                 continue
-            group = [stanzas[k]]
+            if s.kind == "tail":
+                if signature == "drop" or (signature == "auto" and
+                                           s.paras[0].plain_text().strip() in repeated_tails):
+                    removed += 1
+                else:
+                    text = s.paras[0].plain_text().strip()
+                    tails.append(text)
+                    if out and isinstance(out[-1], PoetryBlock) and not out[-1].signature:
+                        out[-1].signature = text  # travels with the poem it closes
+                    else:
+                        out.extend(s.paras)
+                k += 1
+                continue
+            if s.title is not None and not s.paras:  # a header on its own line belongs to the verse below it
+                nxt = stanzas[k + 1] if k + 1 < len(stanzas) else None
+                s.verse = bool(nxt and nxt.kind == "text" and nxt.verse and not nxt.starts_poem
+                               and nxt.blanks_before < POEM_SPLIT_BLANKS)
+            if not s.verse:
+                out.extend(([s.title] if s.title is not None else []) + s.paras)
+                k += 1
+                continue
+            group = [s]
             k += 1
-            while k < len(stanzas) and stanzas[k].verse and stanzas[k].blanks_before < POEM_SPLIT_BLANKS:
+            while k < len(stanzas) and stanzas[k].kind == "text" and stanzas[k].verse and \
+                    not stanzas[k].starts_poem and stanzas[k].blanks_before < POEM_SPLIT_BLANKS:
                 group.append(stanzas[k])
                 k += 1
-            if any(l.strip() for s in group for l in s.lines()):
+            if any(l.strip() for st in group for l in st.lines()):
                 out.append(_build_poem(group))
                 found += 1
         i = j
+    if dropped:
+        report.add("info", f"{dropped} separator line(s) (such as a lone dash between posts) were not imported "
+                           "as text; spacing between poems comes from the template")
+    if removed:
+        report.add("info", f"{removed} signature line(s) were removed"
+                           + (" because the same line closed every post (e.g. a hashtag)" if signature == "auto"
+                              else "") + " (import option 'Signatures' changes this)")
+    repeated = [t for t, n in __import__("collections").Counter(tails).items() if n >= 3]
+    if repeated:
+        report.add("info", f"{len(tails)} right-aligned signature line(s) (e.g. '{repeated[0]}') were kept under "
+                           "their poems; choose 'Signature lines: remove' in the import options to leave them out")
     if found:
         report.add("info", f"{found} poem(s) recognised: line breaks, indentation and blank lines "
                            f"between stanzas were kept (poetry detection: {mode})")
@@ -259,14 +325,14 @@ def promote_chapter_headings(blocks: list[Block], level: int, pattern: str | Non
 
 
 def finish_text_blocks(blocks: list[Block], mode: str, report: ImportReport,
-                       deliberate_breaks: bool) -> list[Block]:
+                       deliberate_breaks: bool, signature: str = "auto") -> list[Block]:
     """Poetry detection for formats whose paragraphs have no explicit blank markers."""
     items: list = []
     for b in blocks:
         if isinstance(b, ParagraphBlock) and items and isinstance(items[-1], ParagraphBlock):
             items.append(Blank())  # paragraphs are separated by a blank line in the source
         items.append(b)
-    out = convert_poetry(items, mode, report, deliberate_breaks)
+    out = convert_poetry(items, mode, report, deliberate_breaks, signature)
     for b in out:
         if isinstance(b, ParagraphBlock):
             for r in b.runs:

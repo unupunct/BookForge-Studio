@@ -138,7 +138,7 @@ class Paginator:
                 self.section_pages.setdefault(f.ctl["anchor"][4:], page.index)
 
     # ------------------------------------------------------------- placing
-    def _chain_height(self, flows: list[Flow], i: int, depth: int = 0) -> float:
+    def _chain_height(self, flows: list[Flow], i: int, depth: int = 0, limit: float | None = None) -> float:
         f = flows[i]
         h = f.height
         if f.keep_with_next and i + 1 < len(flows) and depth < 5:
@@ -146,8 +146,8 @@ class Paginator:
             if n.control is None and not n.own_page:
                 gap = max(f.space_after, n.space_before)
                 if n.keep_with_next:
-                    h += gap + self._chain_height(flows, i + 1, depth + 1)
-                elif n.keep_together:
+                    h += gap + self._chain_height(flows, i + 1, depth + 1, limit)
+                elif n.keep_together and (limit is None or n.height <= limit):
                     h += gap + n.height
                 else:
                     k = min(max(n.orphan, 1), len(n.atoms))
@@ -196,8 +196,8 @@ class Paginator:
         # keep-with-next / keep-together decisions need a fresh page
         if not self._at_top_page():
             remaining = bottom - self.y - gap()
-            if f.keep_with_next and self._chain_height(flows, i) <= content_h and \
-                    self._chain_height(flows, i) > remaining:
+            if f.keep_with_next and self._chain_height(flows, i, 0, content_h) <= content_h and \
+                    self._chain_height(flows, i, 0, content_h) > remaining:
                 self._new_page()
                 page = self._ensure_page()
             elif f.keep_together and f.height <= content_h and f.height > remaining:

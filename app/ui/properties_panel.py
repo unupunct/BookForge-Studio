@@ -136,16 +136,20 @@ class BlockTab(QWidget):
         mf = QFormLayout(self.model_box)
         self.poem_title = QLineEdit()
         self.poem_title.setPlaceholderText("Poem title (optional)")
+        self.poem_sig = QLineEdit()
+        self.poem_sig.setPlaceholderText("Line after the poem (signature, hashtag)")
         self.one_page = QCheckBox("One poem per page")
         self.cont = QCheckBox("Print “(continued)” when it runs onto another page")
         self.h_toc = QCheckBox("Show this heading in the table of contents")
         self.pb_blank = QCheckBox("Insert a blank page")
         self.pb_recto = QCheckBox("Continue on the next right-hand page")
-        for w in (self.poem_title, self.one_page, self.cont, self.h_toc, self.pb_blank, self.pb_recto):
+        for w in (self.poem_title, self.poem_sig, self.one_page, self.cont, self.h_toc, self.pb_blank,
+                  self.pb_recto):
             mf.addRow(w)
         form.addRow(self.model_box)
         form.addRow(hint)
         self.poem_title.editingFinished.connect(lambda: self._model(title=self.poem_title.text().strip()))
+        self.poem_sig.editingFinished.connect(lambda: self._model(signature=self.poem_sig.text().strip()))
         self.one_page.toggled.connect(lambda v: self._model(one_per_page=v))
         self.cont.toggled.connect(lambda v: self._model(continuation_marker=v))
         self.h_toc.toggled.connect(lambda v: self._model(in_toc=v))
@@ -178,7 +182,7 @@ class BlockTab(QWidget):
         self.locked.setChecked(info["locked"])
         from ..domain.content_blocks import HeadingBlock, PageBreakBlock, PoetryBlock
         mb = self.editor.current_model_block() if info["id"] else None
-        for w in (self.poem_title, self.one_page, self.cont):
+        for w in (self.poem_title, self.poem_sig, self.one_page, self.cont):
             w.setVisible(isinstance(mb, PoetryBlock))
         self.h_toc.setVisible(isinstance(mb, HeadingBlock))
         for w in (self.pb_blank, self.pb_recto):
@@ -186,6 +190,7 @@ class BlockTab(QWidget):
         self.model_box.setVisible(isinstance(mb, (PoetryBlock, HeadingBlock, PageBreakBlock)))
         if isinstance(mb, PoetryBlock):
             self.poem_title.setText(mb.title)
+            self.poem_sig.setText(mb.signature)
             self.one_page.setChecked(mb.one_per_page)
             self.cont.setChecked(mb.continuation_marker)
         elif isinstance(mb, HeadingBlock):
