@@ -179,6 +179,13 @@ def create_from_manuscript(spec: NewBookSpec, staged, options, templates: Templa
     if not book.metadata.author and getattr(res, "author", None):
         book.metadata.author = res.author
     md = book.metadata
+    n_poems = sum(1 for s in book.walk() for b in s.blocks if b.type == "poetry")
+    if spec.profile == "poetry" and n_poems >= 10:  # a poetry collection needs a way to find its poems
+        book.settings.show_toc = True
+        book.settings.poem_index = "titles"
+        if not any(s.kind == "toc" for s in book.sections):
+            at = next((i for i, s in enumerate(book.sections) if s.kind in ("chapter", "part")), len(book.sections))
+            book.sections.insert(at, Section("Contents", "toc", in_toc=False))
     if not any(v.strip() for v in (md.author, md.rights, md.publisher, md.isbn, md.year)):
         for s in book.sections:  # nothing to print: no blank copyright page (enable it once details exist)
             if s.kind == "copyright":

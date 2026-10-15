@@ -309,6 +309,13 @@ class BookTab(QWidget):
         self._check(cf, "Table of contents", "show_toc")
         self._ispin(cf, "Contents depth", "toc_depth", 1, 5)
         self._check(cf, "Contents page numbers", "toc_page_numbers")
+        pi = QComboBox()
+        pi.addItem("No list of poems", "none")
+        pi.addItem("List of poems: titles (numbers + first line)", "titles")
+        pi.addItem("List of poems: first lines", "first_lines")
+        pi.activated.connect(lambda _: self._set("poem_index", pi.currentData()))
+        cf.addRow("Poems in contents", pi)
+        self._widgets["poem_index"] = (pi, pi.currentData)
         fn = QComboBox()
         fn.addItems(["roman", "arabic", "none"])
         fn.activated.connect(lambda _: self._set("front_numbering", fn.currentText()))
@@ -421,7 +428,8 @@ class BookTab(QWidget):
             elif isinstance(w, QLineEdit):
                 w.setText(str(val))
             elif isinstance(w, QComboBox):
-                w.setCurrentText(str(val))
+                i = w.findData(val)
+                w.setCurrentIndex(i) if i >= 0 else w.setCurrentText(str(val))
         self.size.setCurrentText(st.page_size if st.page_size in PAGE_SIZES else "Custom")
         custom = st.page_size == "Custom"
         self.w.setEnabled(custom)

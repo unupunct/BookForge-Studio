@@ -25,6 +25,7 @@ from .ui.dialogs.cover_editor import CoverDialog
 from .ui.dialogs.misc_dialogs import SettingsDialog, ValidationDialog
 from .ui.dialogs.search_dialog import SearchDialog
 from .ui.dialogs.template_dialog import TemplateDialog
+from .ui.dialogs.typography_dialog import TypographyDialog
 from .ui.dialogs.wizard import NewBookWizard
 from .ui.editor.chapter_editor import ChapterEditor
 from .ui.preview.preview_panel import PreviewPanel
@@ -126,6 +127,8 @@ class MainWindow(QMainWindow):
         self.act_validate = A("&Validate book", self.validate, "F7", "Check the book for problems")
         self.act_relink = A("&Relink missing images…", self.relink_missing, None,
                             "Point missing images at replacement files")
+        self.act_typo = A("&Typography cleanup\u2026", self.typography_cleanup, None,
+                          "Typographic quotes, dashes, ellipses and spacing for the whole book")
         self.act_cover = A("&Cover design…", self.cover_design, None, "Design the front and back covers")
         self.act_templates = A("&Templates…", self.templates, None, "Browse and apply templates")
         self.act_settings = A("&Settings…", self.settings, "Ctrl+,", "Application settings")
@@ -161,6 +164,7 @@ class MainWindow(QMainWindow):
             v.addAction(d.toggleViewAction())
         b = mb.addMenu("&Book")
         b.addAction(self.act_validate)
+        b.addAction(self.act_typo)
         b.addAction(self.act_cover)
         b.addAction(self.act_relink)
         b.addAction(self.act_templates)
@@ -563,6 +567,11 @@ class MainWindow(QMainWindow):
             self.state.request_layout()
             self.statusBar().showMessage(f"Relinked {fixed} image(s)", 5000)
         return fixed
+
+    def typography_cleanup(self) -> None:
+        dlg = TypographyDialog(self.state, self)
+        dlg.applied.connect(self._after_replace)
+        dlg.exec()
 
     def cover_design(self) -> None:
         self.state.flush()

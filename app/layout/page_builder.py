@@ -346,6 +346,7 @@ def poetry_flows(block: PoetryBlock, ctx: BuildContext) -> list[Flow]:
                              block.id)
         t.keep_with_next = True
         t.keep_together = True
+        t.anchors = [f"blk:{block.id}"]
         flows.append(t)
         title_h = t.height + t.space_after + 6
     style = base
@@ -375,7 +376,8 @@ def poetry_flows(block: PoetryBlock, ctx: BuildContext) -> list[Flow]:
                                   block_id=block.id)])]
     f = Flow(block_id=block.id, atoms=atoms, space_before=style.space_before + 6,
              space_after=style.space_after + 12, widow=4 if own_page else 2, orphan=2,
-             header_atoms=header, keep_together=True)
+             header_atoms=header, keep_together=True,
+             anchors=[] if block.title else [f"blk:{block.id}"])
     if own_page:
         flows.insert(0, Flow(control="page_break", ctl={"blank": False, "recto": False}))
         tail = Flow(control="page_break", ctl={"blank": False, "recto": False})
@@ -603,7 +605,8 @@ def collect_toc(book: BookProject) -> list[TocEntry]:
         for s in sections:
             if not s.enabled:
                 continue
-            if s.kind not in TOC_EXCLUDED and s.in_toc and s.title.strip() and depth <= settings.toc_depth:
+            if s.kind not in TOC_EXCLUDED and s.in_toc and s.show_title and s.title.strip() \
+                    and depth <= settings.toc_depth:
                 entries.append(TocEntry(depth, s.title, f"sec:{s.id}"))
             for b in s.blocks:
                 if isinstance(b, HeadingBlock) and b.in_toc and b.runs:
@@ -614,6 +617,30 @@ def collect_toc(book: BookProject) -> list[TocEntry]:
 
     rec(book.sections, 1)
     return entries
+
+
+def poem_entries(book: BookProject) -> list[TocEntry]:
+    """One entry per poem for the optional list of poems (titles or first lines)."""
+    mode = book.settings.poem_index
+    if mode == "none":
+        return []
+    out: list[TocEntry] = []
+    for s in book.walk():
+        if not s.enabled:
+            continue
+        for b in s.blocks:
+            if not isinstance(b, PoetryBlock):
+                continue
+            first = next((l.strip() for l in b.text.splitlines() if l.strip()), "")
+            title = b.title.strip()
+            short = len(title) <= 4 and title.replace(".", "").isdigit()
+            if mode == "first_lines":
+                text = f"{title}. {first}" if short and first else (first or title)
+            else:
+                text = (f"{title}. {first}" if short and first else title) or first
+            if text:
+                out.append(TocEntry(1, text, f"blk:{b.id}"))
+    return out
 
 
 def outline_entries(book: BookProject) -> list[TocEntry]:
@@ -637,20 +664,25 @@ def outline_entries(book: BookProject) -> list[TocEntry]:
 
 def toc_flows(book: BookProject, ctx: BuildContext, labels: dict[str, str]) -> list[Flow]:
     entries = collect_toc(book)
+    poems = poem_entries(book)
+    if poems:
+        entries = entries + [TocEntry(0, "Index of poems", "")] + poems
     settings = book.settings
     flows: list[Flow] = []
     dot_face = fonts.face("serif")
     for e in entries:
+        heading = e.level == 0  # the "Index of poems" heading has no page number or link
         style = ctx.style("toc_entry")
-        indent = (e.level - 1) * 16.0
+        indent = max(e.level - 1, 0) * 16.0
         size = style.font_size
         leading = size * style.line_height
-        face = fonts.face(style.font_family, bold=(e.level == 1), italic=False)
-        label = labels.get(e.anchor, "0") if settings.toc_page_numbers else ""
+        face = fonts.face(style.font_family, bold=(e.level <= 1 and (heading or e.anchor.startswith("sec:"))),
+                          italic=False)
+        label = labels.get(e.anchor, "0") if settings.toc_page_numbers and not heading else ""
         lab_w = fonts.width(label, face.key, size) if label else 0.0
         avail = ctx.width - indent - lab_w - 14
         runs = plain_runs(e.title)
-        toks = tokenize(runs, replace(style, bold=(e.level == 1)))
+        toks = tokenize(runs, replace(style, bold=(e.level <= 1 and (heading or e.anchor.startswith("sec:")))))
         lines = break_lines(toks, avail, avail)
         atoms: list[Atom] = []
         for n, line in enumerate(lines):
@@ -658,7 +690,7 @@ def toc_flows(book: BookProject, ctx: BuildContext, labels: dict[str, str]) -> l
             base = _baseline(leading, size)
             for it in items:
                 it.y = base
-                it.link = f"#{e.anchor}"
+                it.link = None if heading else f"#{e.anchor}"
             if n == len(lines) - 1 and label:
                 dot_w = fonts.width(". ", dot_face.key, size)
                 gap = ctx.width - lab_w - (indent + nat) - 8
@@ -673,7 +705,8 @@ def toc_flows(book: BookProject, ctx: BuildContext, labels: dict[str, str]) -> l
                                     size=size, color=style.color, width=lab_w,
                                     link=f"#{e.anchor}"))
             atoms.append(Atom(leading, list(items)))
-        f = Flow(atoms=atoms, space_before=(8 if e.level == 1 else 0), space_after=style.space_after,
+        f = Flow(atoms=atoms, space_before=(14 if heading else 8 if e.level == 1 and e.anchor.startswith("sec:") else 0),
+                 space_after=style.space_after,
                  widow=1, orphan=1, keep_together=True)
         flows.append(f)
     return flows

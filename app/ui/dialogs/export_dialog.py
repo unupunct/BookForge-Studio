@@ -22,6 +22,7 @@ from .. import theme
 
 FORMATS = [("Digital PDF", "pdf:digital", ".pdf"), ("Print PDF (bleed, crop marks)", "pdf:print", ".pdf"),
            ("Proof PDF (boundaries and diagnostics)", "pdf:proof", ".pdf"),
+           ("EPUB 3 (e-readers, reflowable)", "epub", ".epub"),
            ("Word document (editable manuscript)", "docx", ".docx"), ("HTML (single file)", "html", ".html"),
            ("Markdown (structured text + images folder)", "markdown", ".md")]
 SEV_COLOR = {"error": theme.ERROR, "warning": theme.WARNING, "info": theme.TEXT_MUTED}
@@ -117,10 +118,12 @@ class ExportDialog(QDialog):
         if key.startswith("pdf:"):
             self.desc.setText(PROFILES[key[4:]].description)
         else:
-            self.desc.setText({"docx": "Editable manuscript. Page layout and covers are simplified.",
+            self.desc.setText({"epub": "Reflowable e-book with cover, contents and images. Page layout does not apply. "
+                                       "Checked structurally; run EpubCheck before store submission.",
+                               "docx": "Editable manuscript. Page layout and covers are simplified.",
                                "html": "One self-contained file with embedded images.",
                                "markdown": "Structured text. Images are written to a folder next to the file."}[key])
-        if not self.path.text() or Path(self.path.text()).suffix in (".pdf", ".docx", ".html", ".md"):
+        if not self.path.text() or Path(self.path.text()).suffix in (".pdf", ".docx", ".html", ".md", ".epub"):
             base = Path(self.path.text()).parent if self.path.text() else self._default_dir()
             self.path.setText(str(base / (safe_filename(self.state.project.metadata.title) + ext)))
         self._reset_stage()

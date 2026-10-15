@@ -11,11 +11,13 @@ import pymupdf
 
 from ..domain.book import BookProject
 from ..exporters.docx_exporter import export_docx
+from ..exporters.epub_exporter import export_epub
 from ..exporters.html_exporter import export_html
 from ..exporters.markdown_exporter import export_markdown
 from ..exporters.pdf_exporter import PROFILES, ExportCancelled, PdfProfile, render_pdf
 from ..layout.model import ImageItem, LayoutResult
 from ..layout.pagination import LayoutCancelled, LayoutEngine
+from .epub_check import check_epub
 from .image_service import effective_dpi
 from .validation_service import ValidationReport, validate_book
 
@@ -150,6 +152,11 @@ def export_other(book: BookProject, dest: Path, fmt: str, overwrite: bool = Fals
     try:
         if fmt == "docx":
             notes = export_docx(book, tmp)
+        elif fmt == "epub":
+            notes = export_epub(book, tmp)
+            problems = check_epub(tmp)
+            if problems:  # never hand over a package we know is broken
+                raise ExportError("The EPUB failed its structural check: " + "; ".join(problems[:3]))
         elif fmt == "html":
             export_html(book, tmp)
         elif fmt == "markdown":

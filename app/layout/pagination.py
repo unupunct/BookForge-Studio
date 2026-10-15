@@ -11,7 +11,7 @@ from typing import Callable
 from ..domain.book import BookProject
 from ..domain.layouts import BookSettings
 from .model import (Glyphs, LayoutIssue, LayoutResult, LineItem, OutlineEntry, Page)
-from .page_builder import (Atom, BuildContext, Flow, TOC_EXCLUDED, collect_toc,
+from .page_builder import (Atom, BuildContext, Flow, TOC_EXCLUDED, collect_toc, poem_entries,
                            effective_margins, outline_entries, section_flows,
                            section_signature, styles_signature)
 from .typography import fonts
@@ -428,7 +428,7 @@ class LayoutEngine:
             decorate_pages(pag.pages, book)
             result = self._result(book, pag)
             new_labels = {}
-            for e in collect_toc(book):
+            for e in collect_toc(book) + poem_entries(book):
                 pg = next((p for p in pag.pages if e.anchor in p.anchors), None)
                 if pg is not None:
                     new_labels[e.anchor] = pg.label or str(pg.index + 1)

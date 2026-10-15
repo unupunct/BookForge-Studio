@@ -166,6 +166,7 @@ class BookSettings:
     show_toc: bool = True
     toc_depth: int = 2
     toc_page_numbers: bool = True
+    poem_index: str = "none"  # none | titles | first_lines: list of poems in the contents page
     # Numbering and running elements
     front_numbering: str = "roman"  # roman | arabic | none
     header_verso: str = "{title}"
