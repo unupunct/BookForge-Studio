@@ -62,7 +62,7 @@ Details and design decisions: [docs/architecture.md](docs/architecture.md).
 
 ## Testing
 
-`scripts\run_tests.bat` (or `pytest`) runs 150+ tests that inspect real output: PDFs are opened with PyMuPDF
+`scripts\run_tests.bat` (or `pytest`) runs 149 tests that inspect real output: PDFs are opened with PyMuPDF
 (page size, metadata, extracted text incl. Romanian diacritics, embedded fonts, bookmarks, links, image bounding
 boxes, text positions versus the layout model), DOCX files are re-read with python-docx, archives are attacked
 with traversal / corruption / interruption scenarios, and the UI is driven headlessly with Qt's offscreen platform.

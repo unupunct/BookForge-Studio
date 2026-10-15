@@ -22,7 +22,7 @@
   library, cover designer, validation report with navigation, book-wide search & replace, undo/redo,
   background jobs with progress and cancellation.
 - Windows packaging with PyInstaller and a headless `--selftest`.
-- 150+ automated tests.
+- 149 automated tests.
 
 ### Known limitations
 See `docs/limitations.md`.
