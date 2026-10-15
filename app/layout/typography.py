@@ -66,6 +66,8 @@ class FontFace:
     key: str
     family: str
     path: Path
+    bold: bool = False
+    italic: bool = False
 
 
 class FontManager:
@@ -99,9 +101,11 @@ class FontManager:
         order = [idx, 1 if bold else 0, 2 if italic else 0, 0]
         files = FONT_FILES[actual]
         path = None
+        chosen = 0
         for i in order:
             path = _find(files[i])
             if path:
+                chosen = i
                 break
         assert path is not None
         key = f"bf:{actual}:{path.name}"
@@ -112,8 +116,11 @@ class FontManager:
                         pdfmetrics.registerFont(TTFont(key, str(path), subfontIndex=0))
                     else:
                         pdfmetrics.registerFont(TTFont(key, str(path)))
-                self._faces[key] = FontFace(key, actual, path)
+                self._faces[key] = FontFace(key, actual, path, chosen in (1, 3), chosen in (2, 3))
         return self._faces[key]
+
+    def by_key(self, key: str) -> FontFace | None:
+        return self._faces.get(key)
 
     def width(self, text: str, key: str, size: float) -> float:
         k = (text, key, size)

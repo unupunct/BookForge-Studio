@@ -60,11 +60,13 @@ class Paginator:
             x0, x1 = inner, self.W - outer
         return side, (x0, top, x1, self.H - bottom)
 
-    def _append_page(self, *, blank: str | None = None, full_bleed: bool = False) -> Page:
+    def _append_page(self, *, blank: str | None = None, full_bleed: bool = False,
+                     matter: str | None = None) -> Page:
         idx = len(self.pages)
-        side, box = self._geometry(idx, self.matter)
+        matter = matter or self.matter
+        side, box = self._geometry(idx, matter)
         page = Page(index=idx, width=self.W, height=self.H, side=side, content_box=box,
-                    matter=self.matter, section_id=self.section_id,
+                    matter=matter, section_id=self.section_id,
                     chapter_title=self.chapter_title, blank=blank, full_bleed=full_bleed)
         self.pages.append(page)
         return page
@@ -72,7 +74,8 @@ class Paginator:
     def _ensure_page(self) -> Page:
         if self.cur is None:
             if self.want_recto and self.settings.facing_pages and len(self.pages) % 2 == 1:
-                blank = self._append_page(blank="intentional")
+                # padding belongs to the matter it follows, so numbering is not disturbed
+                blank = self._append_page(blank="intentional", matter=self.pages[-1].matter)
                 blank.used = True
             self.want_recto = False
             self.cur = self._append_page()

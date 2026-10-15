@@ -88,8 +88,6 @@ class BookSettings:
     show_toc: bool = True
     toc_depth: int = 2
     toc_page_numbers: bool = True
-    list_of_figures: bool = False
-    list_of_tables: bool = False
     # Numbering and running elements
     front_numbering: str = "roman"  # roman | arabic | none
     header_verso: str = "{title}"

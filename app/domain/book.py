@@ -202,6 +202,14 @@ class BookProject:
                                       source_path=a.get("source_path", ""))
         return p
 
+    def snapshot(self) -> "BookProject":
+        """An independent copy for background work (asset bytes are shared, they are immutable)."""
+        copy = BookProject.from_dict(self.to_dict())
+        for aid, a in self.assets.items():
+            copy.assets[aid].data = a.data
+        copy.sources = {}
+        return copy
+
     def structure_snapshot(self) -> list[dict[str, Any]]:
         return [s.to_dict() for s in self.sections]
 

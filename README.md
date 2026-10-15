@@ -1,0 +1,81 @@
+# BookForge Studio
+
+A local-first Windows desktop application that turns manuscripts into professionally formatted books and
+validated PDFs. Everything runs offline; manuscripts and images never leave your computer.
+
+**Status: 0.1.0 – first usable release (MVP).** See [docs/limitations.md](docs/limitations.md) for exactly what is
+and is not implemented.
+
+## Quick start
+
+Requirements: Windows 10/11, Python 3.11+ (developed and tested on Python 3.13).
+
+```bat
+scripts\run_windows.bat          :: creates .venv on first run, installs requirements, starts the app
+scripts\run_tests.bat            :: runs the automated test suite headlessly
+scripts\build_windows.bat        :: builds dist\BookForgeStudio\BookForgeStudio.exe and self-tests it
+```
+
+Manual equivalent:
+
+```bat
+python -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
+.venv\Scripts\python main.py                       :: start
+.venv\Scripts\python main.py path\to\book.bookforge
+.venv\Scripts\python main.py --selftest out-folder :: headless end-to-end check (also works in the built .exe)
+```
+
+## What you can do
+
+| Step | How |
+|---|---|
+| Create a book | **File ▸ New book** – wizard with 10 category profiles and 13 templates |
+| Import a manuscript | **Import** (Ctrl+I): DOCX, TXT (any encoding), Markdown, HTML, text of PDFs. You see an import report before anything is added. Originals are never modified; a snapshot is stored in the project |
+| Organise | Book navigator: add / rename / duplicate / hide / remove, drag-and-drop or Alt+↑/↓, nested sections |
+| Write | Rich-text editor on structured blocks: headings, bold/italic/underline, inline code, links, lists, quotes, code blocks, poetry (line breaks kept), scene breaks, images with captions, tables, recipes, textbook callouts, find & replace |
+| Design | **Book** tab: page size, margins (mirrored, gutter), typography, running headers/footers, numbering. **Styles** tab: edit any named style. **Templates**: preview, apply, duplicate, import/export, save your setup as a template |
+| Cover | **Book ▸ Cover design**: colours, gradient, image, fonts, back-cover text, front-cover PNG export, spine estimate |
+| Preview | **Preview** tab (F5): thumbnails, single page or two-page spread, zoom, click a block to jump to it, pages with problems are outlined |
+| Check | **Validate** (F7): missing images, missing glyphs, low-resolution images, overflow, accidental blank pages … double-click an issue to jump to it |
+| Export | **Export** (Ctrl+E): Digital / Print / Proof PDF, DOCX, HTML, Markdown. Validate → review → write to a temp file → verify → atomic finalise. Existing files are never overwritten silently |
+| Save | `.bookforge` project (ZIP: JSON manifest + assets + original sources). Atomic saves keep a `.bak`; autosave + crash recovery |
+
+Keyboard shortcuts: **Help ▸ Keyboard shortcuts**.
+
+## Architecture in brief
+
+```
+app/domain        semantic document model (no Qt, no ReportLab): blocks, sections, styles, settings
+app/layout        measurement, flows, pagination → LayoutResult (the ONE shared page description)
+app/exporters     pdf (ReportLab) / docx / html / markdown – the PDF exporter only draws the LayoutResult
+app/ui/preview    QPainter renderer of the same LayoutResult
+app/importers     txt / markdown / html / docx / pdf → blocks + import report
+app/persistence   .bookforge archive, atomic save, path-traversal-safe load, schema migrations
+app/services      project/template/import/export/validation/search/autosave services
+app/workers       background tasks and the debounced layout controller
+app/ui            PySide6 widgets (navigator, editor, properties, preview, dialogs, theme)
+app/templates     built-in templates as JSON (data, not code)
+```
+
+Details and design decisions: [docs/architecture.md](docs/architecture.md).
+
+## Testing
+
+`scripts\run_tests.bat` (or `pytest`) runs 150+ tests that inspect real output: PDFs are opened with PyMuPDF
+(page size, metadata, extracted text incl. Romanian diacritics, embedded fonts, bookmarks, links, image bounding
+boxes, text positions versus the layout model), DOCX files are re-read with python-docx, archives are attacked
+with traversal / corruption / interruption scenarios, and the UI is driven headlessly with Qt's offscreen platform.
+
+## Fonts
+
+Layout uses TrueType fonts found on the machine (Windows ships Georgia, Cambria, Times New Roman, Segoe UI, Arial,
+Calibri, Consolas …); ReportLab's Vera fonts are the last-resort fallback. Fonts are embedded as subsets in PDFs.
+**You are responsible for checking that your fonts' licences permit embedding.** The validator warns when a font
+lacks glyphs used by your text. Put extra `.ttf` files in `assets/fonts/` or point `BOOKFORGE_FONT_DIR` at a folder
+(file names must match the table in `app/layout/typography.py`).
+
+## Data locations
+
+`%APPDATA%\BookForgeStudio\` – `settings.json`, `window.ini`, `templates\` (your templates), `recovery\`
+(autosave), `bookforge.log` (events only, no manuscript text). Override with `BOOKFORGE_DATA_DIR`.

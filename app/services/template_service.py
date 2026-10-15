@@ -164,3 +164,13 @@ def sample_book(template: dict[str, Any]) -> BookProject:
                  ParagraphBlock(runs=[Run(text)]), ParagraphBlock(runs=[Run(text)])]
     book.sections = [ch]
     return book
+
+
+def template_from_book(book: BookProject, name: str, key: str) -> dict[str, Any]:
+    """Capture the book's current setup (page, typography, customised styles) as a template."""
+    s = book.settings.to_dict()
+    settings = {k: v for k, v in s.items() if k in TEMPLATE_SETTING_KEYS}
+    styles = {n: {k: v for k, v in st.to_dict().items() if k not in ("name", "user_modified")}
+              for n, st in book.styles.items() if st.user_modified}
+    return {"key": key, "name": name, "description": f"Saved from '{book.metadata.title}'",
+            "builtin": False, "version": 1, "settings": settings, "styles": styles}
