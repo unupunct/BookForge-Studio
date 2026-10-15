@@ -1,0 +1,37 @@
+{
+  "key": "business_nonfiction",
+  "name": "Business Nonfiction",
+  "description": "Practical layout with spaced paragraphs.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "US Trade 6x9",
+    "width_mm": 152.4,
+    "height_mm": 228.6,
+    "margins": {
+      "top": 20,
+      "bottom": 24,
+      "inner": 22,
+      "outer": 17
+    },
+    "body_font": "Calibri",
+    "body_size": 11,
+    "line_height": 1.4,
+    "paragraph_spacing": 7,
+    "first_line_indent": 0,
+    "justify": false,
+    "chapter_right_page": false
+  },
+  "styles": {
+    "chapter_title": {
+      "font_family": "Calibri",
+      "font_size": 28,
+      "bold": true,
+      "color": "#333333"
+    },
+    "heading1": {
+      "font_family": "Calibri",
+      "color": "#C97B3C"
+    }
+  }
+}

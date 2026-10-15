@@ -1,0 +1,48 @@
+{
+  "key": "technical_handbook",
+  "name": "Technical Handbook",
+  "description": "Strong heading hierarchy, code and tables.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "A4",
+    "width_mm": 210.0,
+    "height_mm": 297.0,
+    "margins": {
+      "top": 22,
+      "bottom": 24,
+      "inner": 24,
+      "outer": 20
+    },
+    "body_font": "Segoe UI",
+    "body_size": 10,
+    "line_height": 1.4,
+    "paragraph_spacing": 6,
+    "first_line_indent": 0,
+    "justify": false,
+    "chapter_right_page": false,
+    "toc_depth": 3
+  },
+  "styles": {
+    "chapter_title": {
+      "font_family": "Segoe UI",
+      "font_size": 26,
+      "bold": true,
+      "color": "#1F3A5F",
+      "space_before": 20
+    },
+    "heading1": {
+      "font_family": "Segoe UI",
+      "color": "#1F3A5F",
+      "font_size": 16
+    },
+    "heading2": {
+      "font_family": "Segoe UI",
+      "color": "#1F3A5F",
+      "font_size": 13
+    },
+    "code": {
+      "font_size": 8.5
+    }
+  }
+}

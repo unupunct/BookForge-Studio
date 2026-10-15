@@ -1,0 +1,39 @@
+{
+  "key": "modern_novel",
+  "name": "Modern Novel",
+  "description": "Clean sans chapter openings over readable serif text.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "US Trade 6x9",
+    "width_mm": 152.4,
+    "height_mm": 228.6,
+    "margins": {
+      "top": 20,
+      "bottom": 24,
+      "inner": 24,
+      "outer": 17
+    },
+    "body_font": "Georgia",
+    "body_size": 10.5,
+    "line_height": 1.42,
+    "paragraph_spacing": 0.0,
+    "first_line_indent": 14.0,
+    "justify": true,
+    "chapter_right_page": true,
+    "chapter_drop": 90
+  },
+  "styles": {
+    "chapter_title": {
+      "font_family": "Segoe UI",
+      "font_size": 24,
+      "bold": true,
+      "space_before": 90,
+      "space_after": 36
+    },
+    "header_footer": {
+      "font_family": "Segoe UI",
+      "font_size": 8
+    }
+  }
+}

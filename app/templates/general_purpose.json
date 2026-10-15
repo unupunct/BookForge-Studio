@@ -1,0 +1,25 @@
+{
+  "key": "general_purpose",
+  "name": "General Purpose",
+  "description": "Balanced defaults for any publication.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "A5",
+    "width_mm": 148.0,
+    "height_mm": 210.0,
+    "margins": {
+      "top": 20,
+      "bottom": 22,
+      "inner": 22,
+      "outer": 16
+    },
+    "body_font": "Georgia",
+    "body_size": 11,
+    "line_height": 1.4,
+    "paragraph_spacing": 0.0,
+    "first_line_indent": 14,
+    "justify": true
+  },
+  "styles": {}
+}

@@ -1,0 +1,45 @@
+{
+  "key": "minimalist_poetry",
+  "name": "Minimalist Poetry",
+  "description": "Generous white space, one idea per page.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "A5",
+    "width_mm": 148.0,
+    "height_mm": 210.0,
+    "margins": {
+      "top": 28,
+      "bottom": 30,
+      "inner": 26,
+      "outer": 22
+    },
+    "body_font": "Cambria",
+    "body_size": 11,
+    "line_height": 1.6,
+    "paragraph_spacing": 0.0,
+    "first_line_indent": 0,
+    "justify": false,
+    "header_rule": false,
+    "footer_position": "outer",
+    "chapter_right_page": true
+  },
+  "styles": {
+    "chapter_title": {
+      "font_family": "Cambria",
+      "font_size": 16,
+      "bold": false,
+      "align": "center",
+      "space_before": 90
+    },
+    "poetry": {
+      "font_size": 11.5,
+      "line_height": 1.65,
+      "left_indent": 20
+    },
+    "poetry_title": {
+      "italic": true,
+      "bold": false
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "key": "cookbook",
+  "name": "Cookbook",
+  "description": "Recipe-first layout with clear headings.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "A5",
+    "width_mm": 148.0,
+    "height_mm": 210.0,
+    "margins": {
+      "top": 18,
+      "bottom": 20,
+      "inner": 20,
+      "outer": 16
+    },
+    "body_font": "Cambria",
+    "body_size": 10.5,
+    "line_height": 1.4,
+    "paragraph_spacing": 4,
+    "first_line_indent": 0,
+    "justify": false,
+    "chapter_right_page": true
+  },
+  "styles": {
+    "chapter_title": {
+      "font_family": "Cambria",
+      "font_size": 24,
+      "color": "#8A3B12"
+    },
+    "recipe_heading": {
+      "font_family": "Cambria",
+      "font_size": 18,
+      "color": "#8A3B12"
+    }
+  }
+}

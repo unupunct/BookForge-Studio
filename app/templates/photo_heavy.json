@@ -1,0 +1,33 @@
+{
+  "key": "photo_heavy",
+  "name": "Photo-heavy Book",
+  "description": "Wide margins and full-width images.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "Custom",
+    "width_mm": 203.0,
+    "height_mm": 203.0,
+    "margins": {
+      "top": 15,
+      "bottom": 18,
+      "inner": 15,
+      "outer": 15
+    },
+    "body_font": "Segoe UI",
+    "body_size": 10,
+    "line_height": 1.45,
+    "paragraph_spacing": 6,
+    "first_line_indent": 0,
+    "justify": false,
+    "image_default_width_pct": 100.0,
+    "header_rule": false,
+    "chapter_right_page": false
+  },
+  "styles": {
+    "caption": {
+      "font_family": "Segoe UI",
+      "font_size": 8.5
+    }
+  }
+}

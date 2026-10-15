@@ -1,0 +1,37 @@
+{
+  "key": "academic_textbook",
+  "name": "Academic Textbook",
+  "description": "Textbook layout with callouts and numbered hierarchy.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "A4",
+    "width_mm": 210.0,
+    "height_mm": 297.0,
+    "margins": {
+      "top": 24,
+      "bottom": 26,
+      "inner": 28,
+      "outer": 22
+    },
+    "body_font": "Times New Roman",
+    "body_size": 11,
+    "line_height": 1.4,
+    "paragraph_spacing": 6,
+    "first_line_indent": 0,
+    "justify": true,
+    "chapter_right_page": true,
+    "toc_depth": 3
+  },
+  "styles": {
+    "chapter_title": {
+      "font_family": "Times New Roman",
+      "font_size": 26,
+      "bold": true,
+      "space_before": 50
+    },
+    "callout": {
+      "background": "#EEF3F8"
+    }
+  }
+}

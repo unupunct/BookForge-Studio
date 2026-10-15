@@ -1,0 +1,32 @@
+{
+  "key": "biography",
+  "name": "Biography",
+  "description": "Reflective serif layout with generous chapter openings.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "US Trade 6x9",
+    "width_mm": 152.4,
+    "height_mm": 228.6,
+    "margins": {
+      "top": 22,
+      "bottom": 25,
+      "inner": 25,
+      "outer": 18
+    },
+    "body_font": "Georgia",
+    "body_size": 10.5,
+    "line_height": 1.45,
+    "paragraph_spacing": 0.0,
+    "first_line_indent": 15,
+    "justify": true,
+    "chapter_right_page": true
+  },
+  "styles": {
+    "chapter_title": {
+      "font_family": "Georgia",
+      "font_size": 24,
+      "space_before": 80
+    }
+  }
+}

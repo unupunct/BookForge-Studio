@@ -1,0 +1,164 @@
+"""Text measurement and line breaking on top of font metrics."""
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+
+from ..domain.content_blocks import Run
+from ..domain.styles import ResolvedStyle
+from .model import Glyphs
+from .typography import fonts
+
+_SPLIT = re.compile(r"(\s+)")
+
+
+@dataclass
+class Token:
+    text: str
+    font: str
+    size: float
+    color: str
+    underline: bool
+    link: str | None
+    width: float
+    is_space: bool = False
+    forced_break: bool = False  # a hard line break follows this token
+
+    def sig(self) -> tuple:
+        return (self.font, self.size, self.color, self.underline, self.link)
+
+
+LINK_COLOR = "#1F4E9E"
+
+
+def tokenize(runs: list[Run], style: ResolvedStyle, *, preserve_newlines: bool = True) -> list[Token]:
+    tokens: list[Token] = []
+    for run in runs:
+        family = "mono" if run.code else style.font_family
+        face = fonts.face(family, style.bold or run.bold, style.italic or run.italic)
+        size = style.font_size * (0.92 if run.code and style.font_family != "mono" else 1.0)
+        color = LINK_COLOR if run.link else style.color
+        underline = run.underline or bool(run.link)
+        for piece in _SPLIT.split(run.text):
+            if not piece:
+                continue
+            if piece.isspace():
+                if preserve_newlines and "\n" in piece:
+                    for _ in range(piece.count("\n")):
+                        tokens.append(Token("", face.key, size, color, underline, run.link, 0.0,
+                                            True, True))
+                    continue
+                tokens.append(Token(" ", face.key, size, color, underline, run.link,
+                                    fonts.width(" ", face.key, size), True))
+            else:
+                tokens.append(Token(piece, face.key, size, color, underline, run.link,
+                                    fonts.width(piece, face.key, size)))
+    return tokens
+
+
+def _split_long_word(tok: Token, width: float) -> list[Token]:
+    """Break a word wider than the line so that no character is ever dropped."""
+    parts: list[Token] = []
+    cur = ""
+    for ch in tok.text:
+        trial = cur + ch
+        if cur and fonts.width(trial, tok.font, tok.size) > width:
+            parts.append(Token(cur, tok.font, tok.size, tok.color, tok.underline, tok.link,
+                               fonts.width(cur, tok.font, tok.size)))
+            cur = ch
+        else:
+            cur = trial
+    if cur:
+        parts.append(Token(cur, tok.font, tok.size, tok.color, tok.underline, tok.link,
+                           fonts.width(cur, tok.font, tok.size)))
+    return parts
+
+
+@dataclass
+class BrokenLine:
+    tokens: list[Token]
+    last: bool  # last line of paragraph or ends with a hard break
+
+
+def break_lines(tokens: list[Token], first_width: float, rest_width: float) -> list[BrokenLine]:
+    lines: list[BrokenLine] = []
+    cur: list[Token] = []
+    cur_w = 0.0
+    avail = max(first_width, 1.0)
+    rest_width = max(rest_width, 1.0)
+
+    def flush(last: bool) -> None:
+        nonlocal cur, cur_w, avail
+        while cur and cur[-1].is_space:
+            cur.pop()
+        lines.append(BrokenLine(cur, last))
+        cur, cur_w = [], 0.0
+        avail = rest_width
+
+    pending: list[Token] = []
+    for tok in tokens:
+        if tok.forced_break:
+            flush(True)
+            continue
+        if tok.is_space:
+            if cur:  # drop leading spaces on a line
+                pending.append(tok)
+            continue
+        pieces = [tok]
+        if tok.width > rest_width:
+            pieces = _split_long_word(tok, min(avail, rest_width) if not cur else rest_width)
+        for piece in pieces:
+            space_w = sum(t.width for t in pending)
+            if cur and cur_w + space_w + piece.width > avail + 0.01:
+                pending = []
+                flush(False)
+            if cur:
+                cur.extend(pending)
+                cur_w += space_w
+            pending = []
+            cur.append(piece)
+            cur_w += piece.width
+    if cur or not lines:
+        flush(True)
+    return lines
+
+
+def place_line(line: BrokenLine, x0: float, avail: float, align: str,
+               block_id: str | None) -> tuple[list[Glyphs], float]:
+    """Turn a broken line into positioned runs. Returns (items, natural width)."""
+    toks = line.tokens
+    natural = sum(t.width for t in toks)
+    spaces = sum(len(t.text) for t in toks if t.is_space)
+    extra = 0.0
+    offset = 0.0
+    if align == "justify" and not line.last and spaces > 0 and natural < avail:
+        extra = (avail - natural) / spaces
+    elif align == "center":
+        offset = max((avail - natural) / 2, 0.0)
+    elif align == "right":
+        offset = max(avail - natural, 0.0)
+    items: list[Glyphs] = []
+    x = x0 + offset
+    i = 0
+    while i < len(toks):
+        j = i
+        text = ""
+        w = 0.0
+        sig = toks[i].sig()
+        while j < len(toks) and toks[j].sig() == sig:
+            text += toks[j].text
+            w += toks[j].width + (extra * len(toks[j].text) if toks[j].is_space else 0.0)
+            j += 1
+        t0 = toks[i]
+        items.append(Glyphs(x=x, y=0.0, text=text, font=t0.font, size=t0.size, color=t0.color,
+                            underline=t0.underline, link=t0.link, word_space=extra, width=w,
+                            block_id=block_id))
+        x += w
+        i = j
+    return items, natural
+
+
+def text_width(text: str, family: str, size: float, bold: bool = False,
+               italic: bool = False) -> float:
+    face = fonts.face(family, bold, italic)
+    return fonts.width(text, face.key, size)

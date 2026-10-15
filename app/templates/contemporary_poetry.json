@@ -1,0 +1,44 @@
+{
+  "key": "contemporary_poetry",
+  "name": "Contemporary Poetry",
+  "description": "Sans-serif poems with bold titles.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "A5",
+    "width_mm": 148.0,
+    "height_mm": 210.0,
+    "margins": {
+      "top": 24,
+      "bottom": 26,
+      "inner": 24,
+      "outer": 20
+    },
+    "body_font": "Segoe UI",
+    "body_size": 10.5,
+    "line_height": 1.6,
+    "paragraph_spacing": 0.0,
+    "first_line_indent": 0,
+    "justify": false,
+    "header_rule": false,
+    "footer_position": "outer"
+  },
+  "styles": {
+    "chapter_title": {
+      "font_family": "Segoe UI",
+      "font_size": 20,
+      "bold": true,
+      "align": "left"
+    },
+    "poetry": {
+      "font_family": "Segoe UI",
+      "font_size": 10.5,
+      "left_indent": 0
+    },
+    "poetry_title": {
+      "font_family": "Segoe UI",
+      "bold": true,
+      "left_indent": 0
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "key": "it_documentation",
+  "name": "IT Documentation",
+  "description": "Compact documentation layout with continuous chapters.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "A4",
+    "width_mm": 210.0,
+    "height_mm": 297.0,
+    "margins": {
+      "top": 20,
+      "bottom": 22,
+      "inner": 22,
+      "outer": 18
+    },
+    "body_font": "Calibri",
+    "body_size": 10.5,
+    "line_height": 1.35,
+    "paragraph_spacing": 5,
+    "first_line_indent": 0,
+    "justify": false,
+    "chapter_new_page": false,
+    "header_rule": true,
+    "toc_depth": 3
+  },
+  "styles": {
+    "chapter_title": {
+      "font_family": "Calibri",
+      "font_size": 22,
+      "bold": true,
+      "space_before": 10
+    },
+    "heading1": {
+      "font_family": "Calibri",
+      "font_size": 15
+    },
+    "code": {
+      "font_size": 8.5,
+      "background": "#EFEFEF"
+    }
+  }
+}
