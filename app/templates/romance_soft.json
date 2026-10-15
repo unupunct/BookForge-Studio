@@ -1,0 +1,52 @@
+{
+  "key": "romance_soft",
+  "name": "Novel – Romance",
+  "description": "Warm Cambria, script-like chapter labels, dotted ornament.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "Custom",
+    "width_mm": 140.0,
+    "height_mm": 216.0,
+    "margins": {
+      "top": 21,
+      "bottom": 25,
+      "inner": 22,
+      "outer": 17
+    },
+    "body_font": "Cambria",
+    "body_size": 11.5,
+    "line_height": 1.52,
+    "paragraph_spacing": 0.0,
+    "first_line_indent": 15,
+    "justify": true,
+    "chapter_right_page": true,
+    "chapter_drop": 95,
+    "chapter_number_style": "arabic",
+    "chapter_label": "Chapter {n}",
+    "chapter_ornament": "dots",
+    "header_verso": "",
+    "header_recto": "",
+    "header_rule": false,
+    "footer": "– {page} –",
+    "footer_position": "center"
+  },
+  "styles": {
+    "chapter_title": {
+      "font_family": "Cambria",
+      "font_size": 24,
+      "bold": false,
+      "align": "center",
+      "color": "#7A2E4A",
+      "space_after": 18
+    },
+    "chapter_label": {
+      "font_family": "Cambria",
+      "font_size": 13,
+      "italic": true,
+      "align": "center",
+      "color": "#7A2E4A",
+      "space_after": 4
+    }
+  }
+}

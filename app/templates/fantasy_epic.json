@@ -1,0 +1,50 @@
+{
+  "key": "fantasy_epic",
+  "name": "Novel – Fantasy Epic",
+  "description": "Royal format, capitalised chapter heads, star ornaments.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "Custom",
+    "width_mm": 156.0,
+    "height_mm": 234.0,
+    "margins": {
+      "top": 24,
+      "bottom": 28,
+      "inner": 27,
+      "outer": 20
+    },
+    "body_font": "Constantia",
+    "body_size": 11.5,
+    "line_height": 1.45,
+    "paragraph_spacing": 0.0,
+    "first_line_indent": 17,
+    "justify": true,
+    "chapter_right_page": true,
+    "chapter_drop": 120,
+    "chapter_number_style": "roman",
+    "chapter_label": "Chapter {n}",
+    "chapter_ornament": "stars",
+    "header_verso": "{title}",
+    "header_recto": "{chapter}",
+    "footer": "{page}"
+  },
+  "styles": {
+    "chapter_title": {
+      "font_family": "Constantia",
+      "font_size": 26,
+      "bold": true,
+      "align": "center",
+      "uppercase": true,
+      "space_after": 20
+    },
+    "chapter_label": {
+      "font_family": "Constantia",
+      "font_size": 12,
+      "align": "center",
+      "uppercase": true,
+      "color": "#5A4A2A",
+      "space_after": 6
+    }
+  }
+}

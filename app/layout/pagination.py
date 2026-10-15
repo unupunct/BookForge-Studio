@@ -215,7 +215,10 @@ class Paginator:
             page = self._ensure_page()
             x0, top, x1, bottom = page.content_box
             at_top = not page.used
-            g = 0.0 if at_top else max(self.pending_after, f.space_before) if idx == 0 else 0.0
+            if idx == 0:
+                g = f.drop if at_top else max(self.pending_after, f.space_before, f.drop)
+            else:
+                g = 0.0
             header = f.header_atoms if idx > 0 and f.header_atoms else []
             header_h = sum(a.height for a in header)
             y = self.y + g + header_h

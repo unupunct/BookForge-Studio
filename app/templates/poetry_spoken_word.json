@@ -1,0 +1,59 @@
+{
+  "key": "poetry_spoken_word",
+  "name": "Poetry – Spoken Word",
+  "description": "Bold, loud sans-serif with very open stanza spacing.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "A5",
+    "width_mm": 148.0,
+    "height_mm": 210.0,
+    "margins": {
+      "top": 20,
+      "bottom": 24,
+      "inner": 21,
+      "outer": 17
+    },
+    "body_font": "Verdana",
+    "body_size": 10,
+    "line_height": 1.75,
+    "paragraph_spacing": 0.0,
+    "first_line_indent": 0,
+    "justify": false,
+    "chapter_right_page": false,
+    "chapter_drop": 60,
+    "stanza_gap": 1.5,
+    "poems_new_page": true,
+    "header_verso": "",
+    "header_recto": "",
+    "header_rule": false,
+    "footer": "{page}",
+    "footer_position": "outer"
+  },
+  "styles": {
+    "poetry": {
+      "font_family": "Verdana",
+      "font_size": 10,
+      "line_height": 1.75,
+      "left_indent": 0,
+      "align": "left"
+    },
+    "poetry_title": {
+      "font_family": "Verdana",
+      "bold": true,
+      "uppercase": true,
+      "font_size": 14,
+      "left_indent": 0,
+      "space_after": 16,
+      "color": "#C97B3C"
+    },
+    "chapter_title": {
+      "font_family": "Verdana",
+      "font_size": 24,
+      "bold": true,
+      "uppercase": true,
+      "align": "left",
+      "space_after": 22
+    }
+  }
+}

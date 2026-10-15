@@ -1,0 +1,52 @@
+{
+  "key": "scifi_modern",
+  "name": "Novel – Science Fiction",
+  "description": "Clean Corbel, blue accents, ragged right.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "A5",
+    "width_mm": 148.0,
+    "height_mm": 210.0,
+    "margins": {
+      "top": 19,
+      "bottom": 23,
+      "inner": 21,
+      "outer": 16
+    },
+    "body_font": "Corbel",
+    "body_size": 11,
+    "line_height": 1.47,
+    "paragraph_spacing": 0.0,
+    "first_line_indent": 14,
+    "justify": false,
+    "chapter_right_page": true,
+    "chapter_drop": 80,
+    "chapter_number_style": "arabic",
+    "chapter_label": "Part {n}",
+    "chapter_ornament": "rule",
+    "header_verso": "{title}",
+    "header_recto": "{chapter}",
+    "footer": "{page}",
+    "footer_position": "outer"
+  },
+  "styles": {
+    "chapter_title": {
+      "font_family": "Corbel",
+      "font_size": 24,
+      "bold": true,
+      "align": "left",
+      "color": "#1F3A5F",
+      "space_after": 20
+    },
+    "chapter_label": {
+      "font_family": "Corbel",
+      "font_size": 12,
+      "align": "left",
+      "uppercase": true,
+      "bold": true,
+      "color": "#3C7DD9",
+      "space_after": 4
+    }
+  }
+}

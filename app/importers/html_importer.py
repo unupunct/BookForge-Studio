@@ -10,6 +10,7 @@ from ..domain.content_blocks import (Block, CodeBlock, HeadingBlock, ImageBlock,
 from .base import (ImageSink, ImportOptions, ImportReport, ImportResult, split_into_sections,
                    stem_title)
 from .markdown_importer import load_local_image
+from .postprocess import finish_text_blocks, promote_chapter_headings
 from .txt_importer import decode_text
 
 SKIP_TAGS = {"script", "style", "noscript", "iframe", "object", "embed", "template"}
@@ -209,6 +210,9 @@ def import_html(path: Path, raw: bytes, options: ImportOptions, sink: ImageSink)
             b.runs[0].text = b.runs[0].text.lstrip()
             b.runs[-1].text = b.runs[-1].text.rstrip()
     report.count("blocks", len(p.blocks))
-    sections = split_into_sections(p.blocks, options.split_level,
+    mode = "always" if options.preserve_line_breaks else options.poetry_mode
+    blocks = promote_chapter_headings(p.blocks, options.split_level, options.chapter_pattern, report)
+    blocks = finish_text_blocks(blocks, mode, report, True)
+    sections = split_into_sections(blocks, options.split_level,
                                    (p.title or "").strip() or stem_title(path), report)
     return ImportResult(sections, report, (p.title or "").strip() or None)

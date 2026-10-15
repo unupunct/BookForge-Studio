@@ -24,10 +24,13 @@ class Run:
     underline: bool = False
     code: bool = False
     link: str | None = None
+    sup: bool = False
+    sub: bool = False
+    strike: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {"text": self.text}
-        for k in ("bold", "italic", "underline", "code"):
+        for k in ("bold", "italic", "underline", "code", "sup", "sub", "strike"):
             if getattr(self, k):
                 d[k] = True
         if self.link:
@@ -43,11 +46,17 @@ class Run:
             underline=bool(d.get("underline", False)),
             code=bool(d.get("code", False)),
             link=d.get("link"),
+            sup=bool(d.get("sup", False)),
+            sub=bool(d.get("sub", False)),
+            strike=bool(d.get("strike", False)),
         )
 
     def same_format(self, other: "Run") -> bool:
-        return (self.bold, self.italic, self.underline, self.code, self.link) == (
-            other.bold, other.italic, other.underline, other.code, other.link)
+        return self.fmt() == other.fmt()
+
+    def fmt(self) -> tuple:
+        return (self.bold, self.italic, self.underline, self.code, self.link,
+                self.sup, self.sub, self.strike)
 
 
 def runs_text(runs: list[Run]) -> str:
@@ -60,9 +69,9 @@ def merge_runs(runs: list[Run]) -> list[Run]:
         if not r.text:
             continue
         if out and out[-1].same_format(r):
-            out[-1] = Run(out[-1].text + r.text, r.bold, r.italic, r.underline, r.code, r.link)
+            out[-1] = Run(out[-1].text + r.text, *r.fmt())
         else:
-            out.append(Run(r.text, r.bold, r.italic, r.underline, r.code, r.link))
+            out.append(Run(r.text, *r.fmt()))
     return out
 
 
@@ -129,6 +138,12 @@ class Block:
 class ParagraphBlock(Block):
     type: ClassVar[str] = "paragraph"
     runs: list[Run] = field(default_factory=list)
+    # Per-paragraph formatting kept from imported documents (None/"" = follow the style)
+    align: str = ""
+    left_indent: float | None = None
+    first_indent: float | None = None
+    space_before: float | None = None
+    space_after: float | None = None
 
     def plain_text(self) -> str:
         return runs_text(self.runs)
@@ -212,6 +227,7 @@ class PoetryBlock(Block):
     title: str = ""
     one_per_page: bool = False
     continuation_marker: bool = True  # print "(continued)" when a poem spans pages
+    align: str = ""  # "" = follow the poetry style (template); left | center | right
 
     def plain_text(self) -> str:
         return (self.title + "\n" if self.title else "") + self.text

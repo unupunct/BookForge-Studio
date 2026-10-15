@@ -16,7 +16,7 @@ from ...application_state import AppState
 from ...domain.content_blocks import (Block, ImageBlock, PageBreakBlock, ParagraphBlock,
                                       RecipeBlock, SceneBreakBlock, TableBlock, new_id)
 from .. import theme
-from .block_codec import (LIST_KINDS, P_ID, P_KIND, P_KWN, P_LEVEL, P_STYLE, LINE_SEP,
+from .block_codec import (LIST_KINDS, P_ALIGN, P_ID, P_KIND, P_KWN, P_LEVEL, P_STYLE, LINE_SEP,
                           blocks_from_document, block_format, char_format, load_blocks,
                           placeholder_text)
 
@@ -293,6 +293,14 @@ class ChapterEditor(QWidget):
         tb.addAction(self._act("Link", "Add or edit a hyperlink", self.edit_link, "Ctrl+K"))
         tb.addAction(self._act("Unlink", "Remove hyperlink", self.remove_link))
         tb.addSeparator()
+        tb.addAction(self._act("x²", "Superscript", lambda: self.toggle_vertical(True)))
+        tb.addAction(self._act("x₂", "Subscript", lambda: self.toggle_vertical(False)))
+        tb.addAction(self._act("S̶", "Strikethrough", self.toggle_strike))
+        for label, name, tip in (("≡L", "left", "Align left"), ("≡C", "center", "Center"),
+                                 ("≡R", "right", "Align right"), ("≡J", "justify", "Justify"),
+                                 ("≡∖", "", "Use the template's alignment")):
+            tb.addAction(self._act(label, tip, lambda _=False, n=name: self.set_alignment(n)))
+        tb.addSeparator()
         tb.addAction(self._act("• List", "Bullet list", lambda: self.set_block_kind("list_bullet")))
         tb.addAction(self._act("1. List", "Numbered list", lambda: self.set_block_kind("list_number")))
         tb.addSeparator()
@@ -454,6 +462,35 @@ class ChapterEditor(QWidget):
             f.setFontFamilies(["Consolas"])
             f.setBackground(QBrush(QColor(theme.SURFACE_HI)))
         self._merge(f)
+
+    def toggle_vertical(self, sup: bool) -> None:
+        cur = self.edit.currentCharFormat().verticalAlignment()
+        want = QTextCharFormat.AlignSuperScript if sup else QTextCharFormat.AlignSubScript
+        f = QTextCharFormat()
+        f.setVerticalAlignment(QTextCharFormat.AlignNormal if cur == want else want)
+        self._merge(f)
+
+    def toggle_strike(self) -> None:
+        f = QTextCharFormat()
+        f.setFontStrikeOut(not self.edit.currentCharFormat().fontStrikeOut())
+        self._merge(f)
+
+    def set_alignment(self, align: str) -> None:
+        """Alignment override for the selected paragraphs/poems ("" = follow the template)."""
+        qt = {"left": Qt.AlignLeft, "center": Qt.AlignHCenter, "right": Qt.AlignRight,
+              "justify": Qt.AlignJustify}.get(align, Qt.AlignLeft)
+        cur = QTextCursor(self.edit.document())
+        cur.beginEditBlock()
+        for b in self._selected_blocks():
+            if b.blockFormat().property(P_KIND) not in ("paragraph", "poetry"):
+                continue
+            c = QTextCursor(b)
+            bf = QTextBlockFormat()
+            bf.setProperty(P_ALIGN, align)
+            bf.setAlignment(qt)
+            c.mergeBlockFormat(bf)
+        cur.endEditBlock()
+        self.edit.setFocus()
 
     def edit_link(self) -> None:
         cur = self.edit.textCursor()

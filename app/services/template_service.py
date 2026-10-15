@@ -21,7 +21,8 @@ TEMPLATE_SETTING_KEYS = {
     "paragraph_spacing", "first_line_indent", "justify", "widow_lines", "orphan_lines",
     "chapter_new_page", "chapter_right_page", "chapter_drop", "show_toc", "toc_depth",
     "toc_page_numbers", "front_numbering", "header_verso", "header_recto", "footer",
-    "footer_position", "header_rule", "image_default_width_pct",
+    "footer_position", "header_rule", "image_default_width_pct", "chapter_number_style",
+    "chapter_label", "chapter_ornament", "stanza_gap", "poems_new_page",
 }
 
 

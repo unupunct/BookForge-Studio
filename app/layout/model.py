@@ -26,9 +26,15 @@ class Glyphs:
     width: float = 0.0
     block_id: str | None = None
     kind: str = "text"
+    strike: bool = False
+    rot: float = 0.0  # degrees, counter-clockwise, about (pivot_x, pivot_y)
+    pivot_x: float = 0.0
+    pivot_y: float = 0.0
+    opacity: float = 1.0
 
     def moved(self, dx: float, dy: float) -> "Glyphs":
-        return replace(self, x=self.x + dx, y=self.y + dy)
+        return replace(self, x=self.x + dx, y=self.y + dy, pivot_x=self.pivot_x + dx,
+                       pivot_y=self.pivot_y + dy)
 
 
 @dataclass
@@ -43,9 +49,16 @@ class RectItem:
     block_id: str | None = None
     gradient_to: str | None = None  # vertical gradient end colour
     kind: str = "rect"
+    shape: str = "rect"  # rect | ellipse
+    radius: float = 0.0
+    opacity: float = 1.0
+    rot: float = 0.0
+    pivot_x: float = 0.0
+    pivot_y: float = 0.0
 
     def moved(self, dx: float, dy: float) -> "RectItem":
-        return replace(self, x=self.x + dx, y=self.y + dy)
+        return replace(self, x=self.x + dx, y=self.y + dy, pivot_x=self.pivot_x + dx,
+                       pivot_y=self.pivot_y + dy)
 
 
 @dataclass
@@ -58,9 +71,14 @@ class LineItem:
     color: str = "#000000"
     block_id: str | None = None
     kind: str = "line"
+    opacity: float = 1.0
+    rot: float = 0.0
+    pivot_x: float = 0.0
+    pivot_y: float = 0.0
 
     def moved(self, dx: float, dy: float) -> "LineItem":
-        return replace(self, x1=self.x1 + dx, x2=self.x2 + dx, y1=self.y1 + dy, y2=self.y2 + dy)
+        return replace(self, x1=self.x1 + dx, x2=self.x2 + dx, y1=self.y1 + dy, y2=self.y2 + dy,
+                       pivot_x=self.pivot_x + dx, pivot_y=self.pivot_y + dy)
 
 
 @dataclass
@@ -75,9 +93,16 @@ class ImageItem:
     block_id: str | None = None
     missing: bool = False
     kind: str = "image"
+    opacity: float = 1.0
+    rot: float = 0.0
+    pivot_x: float = 0.0
+    pivot_y: float = 0.0
+    flip: bool = False
+    fx: tuple | None = None  # sorted (name, value) pairs of image filters
 
     def moved(self, dx: float, dy: float) -> "ImageItem":
-        return replace(self, x=self.x + dx, y=self.y + dy)
+        return replace(self, x=self.x + dx, y=self.y + dy, pivot_x=self.pivot_x + dx,
+                       pivot_y=self.pivot_y + dy)
 
 
 Item = Glyphs | RectItem | LineItem | ImageItem

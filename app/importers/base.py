@@ -24,6 +24,8 @@ class ImportOptions:
     detect_title: bool = True  # TXT: first short line followed by a blank line is the title
     preserve_line_breaks: bool = False  # TXT: keep line breaks (poetry) instead of joining
     update_metadata: bool = False  # set book title from the document when it is still default
+    poetry_mode: str = "auto"  # auto | always | never: keep verse line by line
+    keep_formatting: bool = True  # keep alignment/indent/spacing that differs from the body text
 
 
 @dataclass
@@ -73,6 +75,7 @@ class ImportResult:
     sections: list[Section]
     report: ImportReport
     title: str | None = None
+    author: str | None = None
 
 
 # (data, filename) -> asset id, or None when the image is rejected

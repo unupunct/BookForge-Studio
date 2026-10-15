@@ -162,3 +162,20 @@ class SettingsStore:
 
     def existing_recent(self) -> list[str]:
         return [r for r in self.data.recent if Path(r).exists()]
+
+
+def create_from_manuscript(spec: NewBookSpec, staged, options, templates: TemplateService | None = None):
+    """A ready-to-export book from one parsed manuscript: template + front matter + the text.
+
+    Title and author are taken from the document when the spec leaves them empty.
+    """
+    from .import_service import commit_import
+    book = create_project(spec, templates)
+    book.sections = [s for s in book.sections if s.kind != "chapter"]  # drop the empty starter chapter
+    commit_import(book, staged, options)
+    res = staged.result
+    if spec.title.strip() in ("", "Untitled Book") and res.title:
+        book.metadata.title = res.title
+    if not book.metadata.author and getattr(res, "author", None):
+        book.metadata.author = res.author
+    return book

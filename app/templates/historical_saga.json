@@ -1,0 +1,50 @@
+{
+  "key": "historical_saga",
+  "name": "Novel – Historical Saga",
+  "description": "Times New Roman with classic running heads.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "US Trade 6x9",
+    "width_mm": 152.4,
+    "height_mm": 228.6,
+    "margins": {
+      "top": 22,
+      "bottom": 26,
+      "inner": 25,
+      "outer": 18
+    },
+    "body_font": "Times New Roman",
+    "body_size": 12,
+    "line_height": 1.42,
+    "paragraph_spacing": 0.0,
+    "first_line_indent": 17,
+    "justify": true,
+    "chapter_right_page": true,
+    "chapter_drop": 85,
+    "chapter_number_style": "roman",
+    "chapter_label": "Chapter {n}",
+    "chapter_ornament": "rule",
+    "header_verso": "{author}",
+    "header_recto": "{chapter}",
+    "footer": "{page}",
+    "footer_position": "outer"
+  },
+  "styles": {
+    "chapter_title": {
+      "font_family": "Times New Roman",
+      "font_size": 22,
+      "bold": true,
+      "align": "left",
+      "space_after": 24
+    },
+    "chapter_label": {
+      "font_family": "Times New Roman",
+      "font_size": 11,
+      "align": "left",
+      "uppercase": true,
+      "color": "#555555",
+      "space_after": 6
+    }
+  }
+}

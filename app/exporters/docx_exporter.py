@@ -23,10 +23,19 @@ def _add_runs(par, runs: list[Run]) -> None:
         for i, part in enumerate(parts):
             run = par.add_run(part)
             run.bold, run.italic, run.underline = r.bold or None, r.italic or None, r.underline or None
+            if r.strike:
+                run.font.strike = True
+            if r.sup:  # superscript and subscript share one XML element: set only the one in use
+                run.font.superscript = True
+            elif r.sub:
+                run.font.subscript = True
             if r.code:
                 run.font.name = "Consolas"
             if i < len(parts) - 1:
                 run.add_break()
+
+
+_ALIGN = {"left": 0, "center": 1, "right": 2, "justify": 3}
 
 
 def export_docx(book: BookProject, path: Path) -> list[str]:
@@ -51,7 +60,18 @@ def export_docx(book: BookProject, path: Path) -> list[str]:
 
     def block(b: Block) -> None:
         if isinstance(b, ParagraphBlock):
-            _add_runs(doc.add_paragraph(), b.runs)
+            par = doc.add_paragraph()
+            _add_runs(par, b.runs)
+            if b.align in _ALIGN:
+                par.alignment = _ALIGN[b.align]
+            if b.left_indent is not None:
+                par.paragraph_format.left_indent = Pt(b.left_indent)
+            if b.first_indent is not None:
+                par.paragraph_format.first_line_indent = Pt(b.first_indent)
+            if b.space_before is not None:
+                par.paragraph_format.space_before = Pt(b.space_before)
+            if b.space_after is not None:
+                par.paragraph_format.space_after = Pt(b.space_after)
         elif isinstance(b, HeadingBlock):
             doc.add_heading(runs_text(b.runs), level=min(b.level + 1, 9))
         elif isinstance(b, ListBlock):

@@ -16,6 +16,8 @@ from ..domain.content_blocks import (Block, CodeBlock, FootnoteBlock, HeadingBlo
                                      ListBlock, PageBreakBlock, ParagraphBlock, QuoteBlock, Run,
                                      TableBlock, merge_runs, runs_text)
 from ..domain.sections import Section
+from .postprocess import (Blank, convert_poetry, normalise_paragraph_format,
+                          promote_chapter_headings)
 from .base import (ImageSink, ImportFailure, ImportOptions, ImportReport, ImportResult,
                    split_into_sections, stem_title)
 
@@ -102,6 +104,10 @@ class _Converter:
                 v = el.get(qn("w:val"))
                 return v not in ("0", "false", "off", "none")
             fmt["bold"], fmt["italic"], fmt["underline"] = on("w:b"), on("w:i"), on("w:u")
+            fmt["strike"] = on("w:strike") or on("w:dstrike")
+            va = rpr.find(qn("w:vertAlign"))
+            va = va.get(qn("w:val")) if va is not None else None
+            fmt["sup"], fmt["sub"] = va == "superscript", va == "subscript"
             fonts = rpr.find(qn("w:rFonts"))
             if fonts is not None:
                 name = (fonts.get(qn("w:ascii")) or fonts.get(qn("w:hAnsi")) or "").lower()
@@ -153,7 +159,8 @@ class _Converter:
             text = self._run_text(r)
             if text:
                 f = self._run_format(r)
-                segments[-1].append(Run(text, f["bold"], f["italic"], f["underline"], f["code"], link))  # type: ignore[union-attr]
+                segments[-1].append(Run(text, f["bold"], f["italic"], f["underline"], f["code"], link,
+                                        f.get("sup", False), f.get("sub", False), f.get("strike", False)))  # type: ignore[union-attr]
 
         for child in p._p.iterchildren():
             tag = etree.QName(child).localname
@@ -224,6 +231,24 @@ class _Converter:
             else:
                 self.report.add("info", f"Unsupported body element <{tag}> skipped")
 
+    @staticmethod
+    def _direct_format(p: Paragraph) -> dict:
+        """Alignment, indents and spacing set on the paragraph (or its style for alignment)."""
+        pf = p.paragraph_format
+        out: dict = {}
+        al = pf.alignment
+        if al is None and p.style is not None:
+            al = p.style.paragraph_format.alignment
+        name = {0: "left", 1: "center", 2: "right", 3: "justify"}.get(int(al) if al is not None else -1, "")
+        if name:
+            out["align"] = name
+        for attr, key in (("left_indent", "left_indent"), ("first_line_indent", "first_indent"),
+                          ("space_before", "space_before"), ("space_after", "space_after")):
+            v = getattr(pf, attr)
+            if v is not None:
+                out[key] = round(v.pt, 1)
+        return out
+
     def _flush_caption(self) -> None:
         if self.pending_caption:
             self.blocks.append(ParagraphBlock(runs=self.pending_caption, style="caption"))
@@ -243,6 +268,9 @@ class _Converter:
         segments, images = self._paragraph_content(p)
         is_list, ordered = self._list_info(p)
         low = style.lower()
+        fmt = self._direct_format(p)
+        if not images and all(sg == [] for sg in segments):
+            self.blocks.append(Blank())  # an empty paragraph: spacing the author chose
         for seg in segments:
             if seg == "PAGEBREAK":
                 self.blocks.append(PageBreakBlock())
@@ -292,7 +320,7 @@ class _Converter:
                 else:
                     self.blocks.append(CodeBlock(text=text))
             else:
-                self.blocks.append(ParagraphBlock(runs=runs))
+                self.blocks.append(ParagraphBlock(runs=runs, **fmt))
                 self.report.count("paragraphs")
         for img in images:
             self.blocks.append(img)
@@ -359,8 +387,17 @@ def import_docx(path: Path, raw: bytes, options: ImportOptions, sink: ImageSink)
     except Exception as e:
         raise ImportFailure(f"The DOCX content could not be converted: {e}") from e
     blocks = conv.blocks
-    if blocks and isinstance(blocks[-1], PageBreakBlock):
+    while blocks and isinstance(blocks[-1], (PageBreakBlock, Blank)):
         blocks.pop()
+    blocks = promote_chapter_headings(blocks, options.split_level, options.chapter_pattern, report)
+    mode = "always" if options.preserve_line_breaks else options.poetry_mode
+    blocks = convert_poetry(blocks, mode, report)
+    if options.keep_formatting:
+        normalise_paragraph_format(blocks)
+    else:
+        for b in blocks:
+            if isinstance(b, ParagraphBlock):
+                b.align, b.left_indent, b.first_indent, b.space_before, b.space_after = "", None, None, None, None
     sections = split_into_sections(blocks, options.split_level, conv.title or stem_title(path), report)
     if conv.footnotes:
         notes = Section("Notes", "back_matter", blocks=[
@@ -370,4 +407,4 @@ def import_docx(path: Path, raw: bytes, options: ImportOptions, sink: ImageSink)
         report.count("notes", len(conv.footnotes))
     props = doc.core_properties
     title = conv.title or (props.title or None)
-    return ImportResult(sections, report, title)
+    return ImportResult(sections, report, title, props.author or None)

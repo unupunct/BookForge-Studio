@@ -23,9 +23,11 @@ class Token:
     width: float
     is_space: bool = False
     forced_break: bool = False  # a hard line break follows this token
+    rise: float = 0.0  # baseline shift in points (superscript > 0)
+    strike: bool = False
 
     def sig(self) -> tuple:
-        return (self.font, self.size, self.color, self.underline, self.link)
+        return (self.font, self.size, self.color, self.underline, self.link, self.rise, self.strike)
 
 
 LINK_COLOR = "#1F4E9E"
@@ -37,22 +39,30 @@ def tokenize(runs: list[Run], style: ResolvedStyle, *, preserve_newlines: bool =
         family = "mono" if run.code else style.font_family
         face = fonts.face(family, style.bold or run.bold, style.italic or run.italic)
         size = style.font_size * (0.92 if run.code and style.font_family != "mono" else 1.0)
+        rise = 0.0
+        if run.sup or run.sub:
+            size *= 0.65
+            rise = style.font_size * (0.38 if run.sup else -0.12)
         color = LINK_COLOR if run.link else style.color
         underline = run.underline or bool(run.link)
-        for piece in _SPLIT.split(run.text):
+        text = run.text.upper() if style.uppercase else run.text
+
+        def make(t: str, space: bool = False, forced: bool = False) -> Token:
+            w = 0.0 if forced else fonts.width(t, face.key, size)
+            return Token(t, face.key, size, color, underline, run.link, w, space, forced, rise,
+                         run.strike)
+
+        for piece in _SPLIT.split(text):
             if not piece:
                 continue
             if piece.isspace():
                 if preserve_newlines and "\n" in piece:
                     for _ in range(piece.count("\n")):
-                        tokens.append(Token("", face.key, size, color, underline, run.link, 0.0,
-                                            True, True))
+                        tokens.append(make("", True, True))
                     continue
-                tokens.append(Token(" ", face.key, size, color, underline, run.link,
-                                    fonts.width(" ", face.key, size), True))
+                tokens.append(make(" ", True))
             else:
-                tokens.append(Token(piece, face.key, size, color, underline, run.link,
-                                    fonts.width(piece, face.key, size)))
+                tokens.append(make(piece))
     return tokens
 
 
@@ -64,13 +74,13 @@ def _split_long_word(tok: Token, width: float) -> list[Token]:
         trial = cur + ch
         if cur and fonts.width(trial, tok.font, tok.size) > width:
             parts.append(Token(cur, tok.font, tok.size, tok.color, tok.underline, tok.link,
-                               fonts.width(cur, tok.font, tok.size)))
+                               fonts.width(cur, tok.font, tok.size), False, False, tok.rise, tok.strike))
             cur = ch
         else:
             cur = trial
     if cur:
         parts.append(Token(cur, tok.font, tok.size, tok.color, tok.underline, tok.link,
-                           fonts.width(cur, tok.font, tok.size)))
+                           fonts.width(cur, tok.font, tok.size), False, False, tok.rise, tok.strike))
     return parts
 
 
@@ -150,9 +160,9 @@ def place_line(line: BrokenLine, x0: float, avail: float, align: str,
             w += toks[j].width + (extra * len(toks[j].text) if toks[j].is_space else 0.0)
             j += 1
         t0 = toks[i]
-        items.append(Glyphs(x=x, y=0.0, text=text, font=t0.font, size=t0.size, color=t0.color,
+        items.append(Glyphs(x=x, y=-t0.rise, text=text, font=t0.font, size=t0.size, color=t0.color,
                             underline=t0.underline, link=t0.link, word_space=extra, width=w,
-                            block_id=block_id))
+                            block_id=block_id, strike=t0.strike))
         x += w
         i = j
     return items, natural

@@ -48,6 +48,7 @@ class Flow:
     anchors: list[str] = field(default_factory=list)
     header_atoms: list[Atom] = field(default_factory=list)  # repeated on continuation pages
     own_page: bool = False  # image on a dedicated page
+    drop: float = 0.0  # extra space above a chapter opening, kept even at the top of a page
     issues: list[tuple[str, str, str]] = field(default_factory=list)  # severity, code, message
     # control flows: section_start | page_break | full_page | blank_page
     control: str | None = None
@@ -96,6 +97,12 @@ class BuildContext:
         self.styles = StyleSet(defs)
         self.matter = "main"
         self.width, self.height = content_size(self.settings, "main")
+        self.chapter_numbers: dict[str, int] = {}
+        n = 0
+        for sec in book.walk():
+            if sec.enabled and sec.kind == "chapter":
+                n += 1
+                self.chapter_numbers[sec.id] = n
 
     def use_matter(self, matter: str) -> None:
         self.matter = matter
@@ -133,7 +140,7 @@ def text_atoms(runs: list[Run], style: ResolvedStyle, ctx: BuildContext, block_i
         base = _baseline(max(leading, size * 1.15), size)
         h = max(leading, size * 1.15)
         for it in items:
-            it.y = base
+            it.y += base
         out: list[Item] = []
         if decorate and style.background:
             out.append(RectItem(left - 4, 0, width - left - right + 8, h, fill=style.background,
@@ -161,10 +168,16 @@ def _flow_from_style(atoms: list[Atom], style: ResolvedStyle, ctx: BuildContext,
 
 def paragraph_flow(block: ParagraphBlock, ctx: BuildContext, first: bool) -> Flow:
     style = ctx.style("first_paragraph" if first else "body", block.style)
+    over = {k: v for k, v in (("align", block.align or None), ("left_indent", block.left_indent),
+                              ("first_indent", block.first_indent),
+                              ("space_before", block.space_before),
+                              ("space_after", block.space_after)) if v is not None}
+    if over:
+        style = replace(style, **over)
     if not block.runs:
         atoms = [Atom(style.font_size * style.line_height)]
     else:
-        atoms = text_atoms(block.runs, style, ctx, block.id)
+        atoms = text_atoms(block.runs, style, ctx, block.id, preserve_newlines=True)
     f = _flow_from_style(atoms, style, ctx, block.id)
     f.keep_with_next = f.keep_with_next or block.keep_with_next
     # Short paragraphs are not split across pages.
@@ -284,7 +297,10 @@ def code_flow(block: CodeBlock, ctx: BuildContext) -> list[Flow]:
 def poetry_flows(block: PoetryBlock, ctx: BuildContext) -> list[Flow]:
     style = ctx.style("poetry", block.style)
     leading = style.font_size * style.line_height
-    stanza_gap = leading * 0.9
+    stanza_gap = leading * ctx.settings.stanza_gap
+    align = block.align or style.align
+    if align not in ("left", "center", "right"):
+        align = "left"
     atoms: list[Atom] = []
     header: list[Atom] = []
     flows: list[Flow] = []
@@ -300,12 +316,13 @@ def poetry_flows(block: PoetryBlock, ctx: BuildContext) -> list[Flow]:
     nlines = 0
     for raw in block.text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
         if not raw.strip():
-            pending_gap = stanza_gap
+            pending_gap += stanza_gap  # every blank line in the source adds one stanza gap
             continue
-        indent = (len(raw) - len(raw.lstrip(" \t"))) * space_w * 2 if raw[:1] in " \t" else 0.0
+        raw = raw.expandtabs(4)
+        indent = (len(raw) - len(raw.lstrip(" "))) * space_w if align == "left" else 0.0
         line_atoms = text_atoms(plain_runs(raw.strip()), style, ctx, block.id,
-                                left_extra=min(indent, ctx.width * 0.4),
-                                align="left", decorate=False)
+                                left_extra=min(indent, ctx.width * 0.5),
+                                align=align, decorate=False)
         # Wrapped continuation lines get a hanging indent so they read as one line.
         for i, a in enumerate(line_atoms):
             if i > 0:
@@ -326,7 +343,7 @@ def poetry_flows(block: PoetryBlock, ctx: BuildContext) -> list[Flow]:
     f = Flow(block_id=block.id, atoms=atoms, space_before=style.space_before + 6,
              space_after=style.space_after + 12, widow=2, orphan=2, header_atoms=header,
              keep_together=True)
-    if block.one_per_page:
+    if block.one_per_page or ctx.settings.poems_new_page:
         flows.insert(0, Flow(control="page_break", ctl={"blank": False, "recto": False}))
         tail = Flow(control="page_break", ctl={"blank": False, "recto": False})
         flows.append(f)
@@ -664,6 +681,19 @@ def copyright_flows(book: BookProject, ctx: BuildContext) -> list[Flow]:
 
 
 def cover_items(book: BookProject, W: float, H: float, back: bool) -> list[Item]:
+    """Front or back cover. A layered design wins; otherwise the simple form fields generate it."""
+    cv = book.settings.cover
+    layers = cv.back_layers if back else cv.front_layers
+    if layers:
+        from .cover_builder import side_items
+        if back:
+            return side_items(book, layers, W, H, cv.back_background or cv.background,
+                              None if cv.back_background else cv.background2)
+        return side_items(book, layers, W, H, cv.background, cv.background2)
+    return _legacy_cover_items(book, W, H, back)
+
+
+def _legacy_cover_items(book: BookProject, W: float, H: float, back: bool) -> list[Item]:
     cv = book.settings.cover
     md = book.metadata
     items: list[Item] = [RectItem(0, 0, W, H, fill=cv.background, gradient_to=cv.background2)]
@@ -719,6 +749,36 @@ def cover_items(book: BookProject, W: float, H: float, back: bool) -> list[Item]
     return items
 
 
+def to_roman_upper(n: int) -> str:
+    vals = [(1000, "M"), (900, "CM"), (500, "D"), (400, "CD"), (100, "C"), (90, "XC"),
+            (50, "L"), (40, "XL"), (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I")]
+    out = ""
+    for v, t in vals:
+        while n >= v:
+            out += t
+            n -= v
+    return out
+
+
+def _ornament_flow(kind: str, ctx: BuildContext) -> Flow | None:
+    """A small decoration under chapter titles (rule or a centred glyph string)."""
+    if kind in ("", "none"):
+        return None
+    if kind == "rule":
+        w = ctx.width * 0.18
+        x = (ctx.width - w) / 2
+        return Flow(atoms=[Atom(10, [LineItem(x, 5, x + w, 5, 0.8, "#777777")])], space_after=18,
+                    widow=1, orphan=1, keep_with_next=True)
+    glyph = {"dots": "·  ·  ·", "stars": "*   *   *", "bullet": "•",
+             "dash": "—"}.get(kind)
+    if not glyph:
+        return None
+    style = ctx.style("scene_break")
+    f = _flow_from_style(text_atoms([Run(glyph)], style, ctx, None), style, ctx, None)
+    f.space_before, f.space_after, f.keep_with_next = 0, 18, True
+    return f
+
+
 def section_flows(book: BookProject, ctx: BuildContext, section: Section, depth: int,
                   labels: dict[str, str]) -> list[Flow]:
     """All flows of a section (and its children), beginning with a control flow."""
@@ -761,7 +821,21 @@ def section_flows(book: BookProject, ctx: BuildContext, section: Section, depth:
     elif section.title and section.show_title and kind != "title_page":
         style_name = {"part": "part_title", "section": f"heading{min(depth, 4)}"}.get(kind, "chapter_title")
         tf = title_flow(section.title, style_name, ctx, None, [f"sec:{section.id}"])
+        opening = bool(new_page) and kind != "section"  # the drop only applies on a fresh page
+        num = ctx.chapter_numbers.get(section.id)
+        if kind == "chapter" and num and s.chapter_number_style != "none":
+            n_text = to_roman_upper(num) if s.chapter_number_style == "roman" else str(num)
+            label = title_flow(s.chapter_label.replace("{n}", n_text), "chapter_label", ctx, None)
+            label.drop = s.chapter_drop if opening else 0.0
+            tf.space_before = 2.0
+            flows.append(label)
+        elif opening:
+            tf.drop = s.chapter_drop
         flows.append(tf)
+        orn = _ornament_flow(s.chapter_ornament, ctx) if kind == "chapter" else None
+        if orn:
+            tf.space_after = max(tf.space_after * 0.4, 6.0)
+            flows.append(orn)
     else:
         if section.title:
             flows.append(Flow(control="anchor", ctl={"anchor": f"sec:{section.id}"}))

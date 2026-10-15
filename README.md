@@ -3,7 +3,7 @@
 A local-first Windows desktop application that turns manuscripts into professionally formatted books and
 validated PDFs. Everything runs offline; manuscripts and images never leave your computer.
 
-**Status: 0.1.0 – first usable release (MVP).** See [docs/limitations.md](docs/limitations.md) for exactly what is
+**Status: 0.2.0.** See [docs/limitations.md](docs/limitations.md) for exactly what is
 and is not implemented.
 
 ## Quick start
@@ -30,12 +30,12 @@ python -m venv .venv
 
 | Step | How |
 |---|---|
-| Create a book | **File ▸ New book** – wizard with 10 category profiles and 13 templates |
-| Import a manuscript | **Import** (Ctrl+I): DOCX, TXT (any encoding), Markdown, HTML, text of PDFs. You see an import report before anything is added. Originals are never modified; a snapshot is stored in the project |
+| Create a book | **File ▸ New book** – wizard with 10 category profiles and 33 templates (incl. 10 novel and 10 poetry designs). **File ▸ New book from manuscript** builds a finished book straight from a DOCX/TXT/Markdown file |
+| Import a manuscript | **Import** (Ctrl+I): DOCX, TXT (any encoding), Markdown, HTML, text of PDFs. You see an import report before anything is added. Originals are never modified; a snapshot is stored in the project. Bold/italic/underline/strike, super/subscript, centring, indents and spacing that differ from the body text are kept; poems are recognised (or forced via the Poetry option) and keep every line, indentation and blank line; "Chapter N" lines become chapters when the file has no Heading styles |
 | Organise | Book navigator: add / rename / duplicate / hide / remove, drag-and-drop or Alt+↑/↓, nested sections |
 | Write | Rich-text editor on structured blocks: headings, bold/italic/underline, inline code, links, lists, quotes, code blocks, poetry (line breaks kept), scene breaks, images with captions, tables, recipes, textbook callouts, find & replace |
 | Design | **Book** tab: page size, margins (mirrored, gutter), typography, running headers/footers, numbering. **Styles** tab: edit any named style. **Templates**: preview, apply, duplicate, import/export, save your setup as a template |
-| Cover | **Book ▸ Cover design**: colours, gradient, image, fonts, back-cover text, front-cover PNG export, spine estimate |
+| Cover | **Book ▸ Cover design**: layered designer (text, images, rectangles, ellipses, lines, frames, 6 generated patterns), 10 presets, 8 palettes, image filters (B&W, sepia, brightness, contrast, saturation, blur, colour wash, flip), drag/resize/rotate, front and back. Exports: front PNG/PDF (digital), print front+back with bleed and crop marks, and a print wrap-around (back + spine + front) using your paper thickness |
 | Preview | **Preview** tab (F5): thumbnails, single page or two-page spread, zoom, click a block to jump to it, pages with problems are outlined |
 | Check | **Validate** (F7): missing images, missing glyphs, low-resolution images, overflow, accidental blank pages … double-click an issue to jump to it |
 | Export | **Export** (Ctrl+E): Digital / Print / Proof PDF, DOCX, HTML, Markdown. Validate → review → write to a temp file → verify → atomic finalise. Existing files are never overwritten silently |
@@ -62,7 +62,7 @@ Details and design decisions: [docs/architecture.md](docs/architecture.md).
 
 ## Testing
 
-`scripts\run_tests.bat` (or `pytest`) runs 149 tests that inspect real output: PDFs are opened with PyMuPDF
+`scripts\run_tests.bat` (or `pytest`) runs 232 tests that inspect real output: PDFs are opened with PyMuPDF
 (page size, metadata, extracted text incl. Romanian diacritics, embedded fonts, bookmarks, links, image bounding
 boxes, text positions versus the layout model), DOCX files are re-read with python-docx, archives are attacked
 with traversal / corruption / interruption scenarios, and the UI is driven headlessly with Qt's offscreen platform.

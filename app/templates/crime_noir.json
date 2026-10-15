@@ -1,0 +1,53 @@
+{
+  "key": "crime_noir",
+  "name": "Novel – Crime & Noir",
+  "description": "Austere Cambria, uppercase heads, dash ornament.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "Custom",
+    "width_mm": 129.0,
+    "height_mm": 198.0,
+    "margins": {
+      "top": 17,
+      "bottom": 21,
+      "inner": 19,
+      "outer": 14
+    },
+    "body_font": "Cambria",
+    "body_size": 10.5,
+    "line_height": 1.4,
+    "paragraph_spacing": 0.0,
+    "first_line_indent": 13,
+    "justify": true,
+    "chapter_right_page": false,
+    "chapter_drop": 60,
+    "chapter_number_style": "arabic",
+    "chapter_label": "{n}.",
+    "chapter_ornament": "dash",
+    "header_verso": "",
+    "header_recto": "",
+    "header_rule": false,
+    "footer": "{page}",
+    "footer_position": "outer"
+  },
+  "styles": {
+    "chapter_title": {
+      "font_family": "Segoe UI",
+      "font_size": 15,
+      "bold": true,
+      "uppercase": true,
+      "align": "left",
+      "color": "#1A1A1A",
+      "space_after": 18
+    },
+    "chapter_label": {
+      "font_family": "Segoe UI",
+      "font_size": 11,
+      "align": "left",
+      "bold": true,
+      "color": "#8B1E1E",
+      "space_after": 2
+    }
+  }
+}

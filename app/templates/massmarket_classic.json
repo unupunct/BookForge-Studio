@@ -1,0 +1,49 @@
+{
+  "key": "massmarket_classic",
+  "name": "Novel – Mass-Market Classic",
+  "description": "Dense, economical Times pages with Roman numerals.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "Custom",
+    "width_mm": 108.0,
+    "height_mm": 175.0,
+    "margins": {
+      "top": 12,
+      "bottom": 14,
+      "inner": 13,
+      "outer": 10
+    },
+    "body_font": "Times New Roman",
+    "body_size": 9.5,
+    "line_height": 1.33,
+    "paragraph_spacing": 0.0,
+    "first_line_indent": 10,
+    "justify": true,
+    "chapter_right_page": false,
+    "chapter_drop": 40,
+    "chapter_number_style": "roman",
+    "chapter_label": "{n}",
+    "chapter_ornament": "none",
+    "header_verso": "{author}",
+    "header_recto": "{title}",
+    "header_rule": false,
+    "footer": "{page}",
+    "footer_position": "center"
+  },
+  "styles": {
+    "chapter_title": {
+      "font_family": "Times New Roman",
+      "font_size": 15,
+      "bold": true,
+      "align": "center",
+      "space_after": 14
+    },
+    "chapter_label": {
+      "font_family": "Times New Roman",
+      "font_size": 11,
+      "align": "center",
+      "space_after": 2
+    }
+  }
+}

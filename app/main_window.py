@@ -20,7 +20,9 @@ from .ui import theme
 from .ui.book_navigator import BookNavigator
 from .ui.dialogs.export_dialog import ExportDialog
 from .ui.dialogs.import_dialog import ImportDialog
-from .ui.dialogs.misc_dialogs import CoverDialog, SettingsDialog, ValidationDialog
+from .ui.dialogs.manuscript_dialog import ManuscriptDialog
+from .ui.dialogs.cover_editor import CoverDialog
+from .ui.dialogs.misc_dialogs import SettingsDialog, ValidationDialog
 from .ui.dialogs.search_dialog import SearchDialog
 from .ui.dialogs.template_dialog import TemplateDialog
 from .ui.dialogs.wizard import NewBookWizard
@@ -99,6 +101,8 @@ class MainWindow(QMainWindow):
     def _build_actions(self) -> None:
         A = self._action
         self.act_new = A("&New book…", self.new_project, QKeySequence.New, "Create a new book with the wizard")
+        self.act_from_ms = A("New book from &manuscript\u2026", self.new_from_manuscript, "Ctrl+Shift+N",
+                             "Create a ready-to-export book directly from a DOCX, TXT or Markdown file")
         self.act_open = A("&Open…", self.open_project, QKeySequence.Open, "Open a .bookforge project")
         self.act_save = A("&Save", self.save, QKeySequence.Save, "Save the project")
         self.act_save_as = A("Save &as…", self.save_as, QKeySequence.SaveAs, "Save under a new name")
@@ -132,6 +136,7 @@ class MainWindow(QMainWindow):
         mb = self.menuBar()
         f = mb.addMenu("&File")
         f.addAction(self.act_new)
+        f.addAction(self.act_from_ms)
         f.addAction(self.act_open)
         self.recent_menu = f.addMenu("Open &recent")
         self.recent_menu.aboutToShow.connect(self._fill_recent)
@@ -309,6 +314,18 @@ class MainWindow(QMainWindow):
         if wiz.exec():
             self.state.new_project(wiz.spec())
             self.tabs.setCurrentWidget(self.editor)
+
+    def new_from_manuscript(self, path: str | None = None) -> None:
+        if not self.confirm_discard():
+            return
+        dlg = ManuscriptDialog(self, self.state.templates, self.state.settings_store.data.last_open_dir,
+                               path or "")
+        if dlg.exec() and dlg.staged:
+            from .services.project_service import create_from_manuscript
+            book = create_from_manuscript(dlg.spec(), dlg.staged, dlg.options(), self.state.templates)
+            self.state.install_project(book)
+            self.tabs.setCurrentWidget(self.preview)
+            self.state.request_layout(immediate=True)
 
     def open_project(self, path: str | None = None) -> None:
         if not self.confirm_discard():

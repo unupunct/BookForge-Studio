@@ -24,7 +24,7 @@ from ...layout.page_builder import EXERCISE_LABELS
 from .. import theme
 
 _UP = int(QTextFormat.UserProperty)
-P_KIND, P_ID, P_LEVEL, P_DATA, P_KWN, P_STYLE = (_UP + i for i in range(1, 7))
+P_KIND, P_ID, P_LEVEL, P_DATA, P_KWN, P_STYLE, P_ALIGN = (_UP + i for i in range(1, 8))
 P_CODE = _UP + 10
 LINE_SEP = " "
 
@@ -78,6 +78,12 @@ def char_format(kind: str, level: int, run: Run | None = None) -> QTextCharForma
             f.setFontItalic(True)
         if run.underline:
             f.setFontUnderline(True)
+        if run.strike:
+            f.setFontStrikeOut(True)
+        if run.sup:
+            f.setVerticalAlignment(QTextCharFormat.AlignSuperScript)
+        elif run.sub:
+            f.setVerticalAlignment(QTextCharFormat.AlignSubScript)
         if run.code and kind != "code":
             f.setFontFamilies([CODE_FONT])
             f.setProperty(P_CODE, True)
@@ -143,19 +149,22 @@ def placeholder_text(block: Block, book: BookProject | None) -> str:
 
 
 class _Spec:
-    __slots__ = ("kind", "id", "level", "data", "runs", "text", "kwn", "style")
+    __slots__ = ("kind", "id", "level", "data", "runs", "text", "kwn", "style", "align", "fmt")
 
     def __init__(self, kind: str, id: str, runs: list[Run] | None = None, text: str = "",
                  level: int = 1, data: dict | None = None, kwn: bool = False,
-                 style: str | None = None):
+                 style: str | None = None, align: str = "", fmt: dict | None = None):
         self.kind, self.id, self.runs, self.text = kind, id, runs, text
         self.level, self.data, self.kwn, self.style = level, data or {}, kwn, style
+        self.align, self.fmt = align, fmt or {}
 
 
 def _specs_for(block: Block, book: BookProject | None) -> list[_Spec]:
     kw = dict(kwn=block.keep_with_next, style=block.style)
     if isinstance(block, ParagraphBlock):
-        return [_Spec("paragraph", block.id, block.runs, **kw)]
+        fmt = {k: getattr(block, k) for k in ("left_indent", "first_indent", "space_before",
+                                              "space_after") if getattr(block, k) is not None}
+        return [_Spec("paragraph", block.id, block.runs, align=block.align, fmt=fmt, **kw)]
     if isinstance(block, HeadingBlock):
         return [_Spec("heading", block.id, block.runs, level=block.level, **kw)]
     if isinstance(block, ListBlock):
@@ -173,7 +182,7 @@ def _specs_for(block: Block, book: BookProject | None) -> list[_Spec]:
         out = []
         if block.title:
             out.append(_Spec("poem_title", block.id, text=block.title))
-        out.append(_Spec("poetry", block.id, text=block.text, **kw))
+        out.append(_Spec("poetry", block.id, text=block.text, align=block.align, **kw))
         return out
     if isinstance(block, SceneBreakBlock):
         return [_Spec("scene", block.id, text=block.glyph)]
@@ -191,6 +200,19 @@ def _apply_block_props(cursor: QTextCursor, spec: _Spec) -> None:
     bf.setProperty(P_ID, spec.id)
     bf.setProperty(P_LEVEL, spec.level)
     bf.setProperty(P_KWN, spec.kwn)
+    if spec.align:
+        bf.setProperty(P_ALIGN, spec.align)
+        bf.setAlignment({"left": Qt.AlignLeft, "center": Qt.AlignHCenter, "right": Qt.AlignRight,
+                         "justify": Qt.AlignJustify}.get(spec.align, Qt.AlignLeft))
+    if spec.fmt:  # imported paragraph formatting is shown approximately (1 pt ~ 1.33 px)
+        if spec.fmt.get("left_indent") is not None:
+            bf.setLeftMargin(spec.fmt["left_indent"] * 1.33)
+        if spec.fmt.get("first_indent") is not None:
+            bf.setTextIndent(spec.fmt["first_indent"] * 1.33)
+        if spec.fmt.get("space_before") is not None:
+            bf.setTopMargin(spec.fmt["space_before"] * 1.33)
+        if spec.fmt.get("space_after") is not None:
+            bf.setBottomMargin(spec.fmt["space_after"] * 1.33)
     if spec.style:
         bf.setProperty(P_STYLE, spec.style)
     if spec.data:
@@ -257,7 +279,10 @@ def _runs_of(block, kind: str) -> list[Run]:
         link = fmt.anchorHref() if fmt.isAnchor() and fmt.anchorHref() else None
         underline = fmt.fontUnderline() and not link
         code = bool(fmt.property(P_CODE))
-        runs.append(Run(text, bold, italic, underline, code, link))
+        va = fmt.verticalAlignment()
+        runs.append(Run(text, bold, italic, underline, code, link,
+                        va == QTextCharFormat.AlignSuperScript, va == QTextCharFormat.AlignSubScript,
+                        fmt.fontStrikeOut()))
     return merge_runs(runs)
 
 
@@ -279,6 +304,7 @@ def blocks_from_document(doc: QTextDocument, originals: dict[str, Block]) -> lis
         d = {"kind": kind, "id": str(_prop(bf, P_ID, "")) or new_id(),
              "level": int(_prop(bf, P_LEVEL, 1)), "kwn": bool(_prop(bf, P_KWN, False)),
              "style": str(_prop(bf, P_STYLE, "")) or None, "text": _plain(blk),
+             "align": str(_prop(bf, P_ALIGN, "")),
              "runs": None if kind in ("code", "poetry", "poem_title", "scene", "placeholder")
              else _runs_of(blk, kind)}
         raw = _prop(bf, P_DATA, "")
@@ -345,7 +371,7 @@ def blocks_from_document(doc: QTextDocument, originals: dict[str, Block]) -> lis
                 sid = fresh(p["id"])
                 nb = replace(o, id=sid, title=title, text=p["text"]) if o else \
                     PoetryBlock(id=sid, title=title, text=p["text"])
-                nb.keep_with_next, nb.style = p["kwn"], p["style"]
+                nb.keep_with_next, nb.style, nb.align = p["kwn"], p["style"], p["align"]
                 out.append(nb)
                 i = j + 1
             else:  # the poem body was deleted: keep the title as text rather than lose it
@@ -356,7 +382,7 @@ def blocks_from_document(doc: QTextDocument, originals: dict[str, Block]) -> lis
             o = orig(s["id"], PoetryBlock)
             sid = fresh(s["id"])
             nb = replace(o, id=sid, title="", text=s["text"]) if o else PoetryBlock(id=sid, text=s["text"])
-            nb.keep_with_next, nb.style = s["kwn"], s["style"]
+            nb.keep_with_next, nb.style, nb.align = s["kwn"], s["style"], s["align"]
             out.append(nb)
         elif kind == "heading":
             o = orig(s["id"], HeadingBlock)
@@ -401,7 +427,7 @@ def blocks_from_document(doc: QTextDocument, originals: dict[str, Block]) -> lis
             sid = fresh(s["id"])
             nb = replace(o, id=sid, runs=s["runs"] or []) if o else \
                 ParagraphBlock(id=sid, runs=s["runs"] or [])
-            nb.keep_with_next, nb.style = s["kwn"], s["style"]
+            nb.keep_with_next, nb.style, nb.align = s["kwn"], s["style"], s["align"]
             out.append(nb)
         i += 1
     return out

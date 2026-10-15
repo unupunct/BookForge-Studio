@@ -39,6 +39,12 @@ def _runs(runs: list[Run]) -> str:
             t = f"<em>{t}</em>"
         if r.underline:
             t = f"<u>{t}</u>"
+        if r.strike:
+            t = f"<s>{t}</s>"
+        if r.sup:
+            t = f"<sup>{t}</sup>"
+        elif r.sub:
+            t = f"<sub>{t}</sub>"
         if r.link and r.link.lower().startswith(("http://", "https://", "mailto:")):
             t = f'<a href="{html.escape(r.link, quote=True)}">{t}</a>'
         out.append(t)
@@ -65,7 +71,19 @@ def _image_tag(book: BookProject, b: ImageBlock) -> str:
 
 def _block(book: BookProject, b: Block) -> str:
     if isinstance(b, ParagraphBlock):
-        return f"<p>{_runs(b.runs)}</p>"
+        css = []
+        if b.align:
+            css.append(f"text-align:{b.align}")
+        if b.left_indent:
+            css.append(f"margin-left:{b.left_indent:.0f}pt")
+        if b.first_indent:
+            css.append(f"text-indent:{b.first_indent:.0f}pt")
+        if b.space_before is not None:
+            css.append(f"margin-top:{b.space_before:.0f}pt")
+        if b.space_after is not None:
+            css.append(f"margin-bottom:{b.space_after:.0f}pt")
+        style = f' style="{";".join(css)}"' if css else ""
+        return f"<p{style}>{_runs(b.runs)}</p>"
     if isinstance(b, HeadingBlock):
         lvl = min(b.level + 2, 6)
         return f'<h{lvl} id="blk-{b.id}">{_runs(b.runs)}</h{lvl}>'
@@ -79,7 +97,8 @@ def _block(book: BookProject, b: Block) -> str:
         return f"<pre><code>{html.escape(b.text)}</code></pre>"
     if isinstance(b, PoetryBlock):
         title = f"<h4>{html.escape(b.title)}</h4>" if b.title else ""
-        return f'{title}<div class="poem">{html.escape(b.text)}</div>'
+        align = f' style="text-align:{b.align}"' if b.align else ""
+        return f'{title}<div class="poem"{align}>{html.escape(b.text)}</div>'
     if isinstance(b, ImageBlock):
         return _image_tag(book, b)
     if isinstance(b, TableBlock):

@@ -1,0 +1,51 @@
+{
+  "key": "young_adult",
+  "name": "Novel – Young Adult",
+  "description": "Friendly Candara, oversized chapter numbers, ragged right.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "Custom",
+    "width_mm": 127.0,
+    "height_mm": 203.0,
+    "margins": {
+      "top": 18,
+      "bottom": 22,
+      "inner": 19,
+      "outer": 15
+    },
+    "body_font": "Candara",
+    "body_size": 11.5,
+    "line_height": 1.5,
+    "paragraph_spacing": 0.0,
+    "first_line_indent": 13,
+    "justify": false,
+    "chapter_right_page": false,
+    "chapter_drop": 55,
+    "chapter_number_style": "arabic",
+    "chapter_label": "{n}",
+    "chapter_ornament": "none",
+    "header_verso": "",
+    "header_recto": "",
+    "header_rule": false,
+    "footer": "{page}",
+    "footer_position": "center"
+  },
+  "styles": {
+    "chapter_title": {
+      "font_family": "Candara",
+      "font_size": 22,
+      "bold": true,
+      "align": "left",
+      "space_after": 20
+    },
+    "chapter_label": {
+      "font_family": "Candara",
+      "font_size": 44,
+      "bold": true,
+      "align": "left",
+      "color": "#C97B3C",
+      "space_after": 0
+    }
+  }
+}

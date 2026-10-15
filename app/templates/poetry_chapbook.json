@@ -1,0 +1,55 @@
+{
+  "key": "poetry_chapbook",
+  "name": "Poetry – Chapbook",
+  "description": "A6 pocket chapbook with compact, readable verse.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "A6",
+    "width_mm": 105.0,
+    "height_mm": 148.0,
+    "margins": {
+      "top": 14,
+      "bottom": 17,
+      "inner": 14,
+      "outer": 11
+    },
+    "body_font": "Candara",
+    "body_size": 10,
+    "line_height": 1.55,
+    "paragraph_spacing": 0.0,
+    "first_line_indent": 0,
+    "justify": false,
+    "chapter_right_page": false,
+    "chapter_drop": 40,
+    "stanza_gap": 0.9,
+    "header_verso": "",
+    "header_recto": "",
+    "header_rule": false,
+    "footer": "{page}",
+    "footer_position": "center"
+  },
+  "styles": {
+    "poetry": {
+      "font_family": "Candara",
+      "font_size": 10,
+      "line_height": 1.55,
+      "left_indent": 8,
+      "align": "left"
+    },
+    "poetry_title": {
+      "font_family": "Candara",
+      "bold": true,
+      "font_size": 11,
+      "left_indent": 8,
+      "space_after": 8
+    },
+    "chapter_title": {
+      "font_family": "Candara",
+      "font_size": 15,
+      "bold": true,
+      "align": "left",
+      "space_after": 14
+    }
+  }
+}

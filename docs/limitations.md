@@ -1,4 +1,4 @@
-# Known limitations and remaining scope (0.1.0)
+# Known limitations and remaining scope (0.2.0)
 
 Honest list of what is **not** implemented or only partly implemented. Nothing here is hidden behind a button.
 
@@ -7,9 +7,6 @@ Honest list of what is **not** implemented or only partly implemented. Nothing h
 * **EPUB export.** Not attempted: it cannot be validated within this release.
 * **RTF import.** No reliable offline RTF parser is bundled; the import dialog tells you to save as DOCX/TXT.
 * **OCR.** Scanned PDF pages are detected and reported, never converted to text.
-* **Print wrap-around cover** (back + spine + front as one artwork). The cover dialog gives front/back cover
-  design, front-cover PNG export and an *estimated* spine width (pages ÷ 2 × the leaf thickness you enter); it
-  does not produce spine artwork. Confirm spine width and cover templates with your printer.
 * **Footnotes at the page bottom.** Footnotes/endnotes are supported as *end notes* (a footnote block you place at
   the end of a chapter; DOCX imports collect them into a "Notes" section). No per-page footnote reservation.
 * **Automatic generation** of index, bibliography, list of figures/tables, figure numbering and cross-references.
@@ -19,13 +16,24 @@ Honest list of what is **not** implemented or only partly implemented. Nothing h
 * **Poetry:** one-poem-per-page and "(continued)" markers exist; separation pages between poems do not.
 * **Interface localisation.** The UI is English; strings are not yet routed through `tr()`. The document engine is
   Unicode throughout and tested with Romanian diacritics.
-* **Cover layers and drag-resizing.** The cover is generated from a form (colours, image, text sizes), not a
-  free-form layer canvas.
 * **PDF/X or other print-standard compliance.** The Print profile adds bleed, crop marks, trim/bleed boxes and
   high-resolution images and reports fonts/resolution, but is **not** validated against PDF/X and is not labelled
   as such. Run your printer's preflight.
 
 ## Partial / behaviours to know
+
+* **Poetry detection is a heuristic** (short lines, little end punctuation, varying indents, centring, soft line
+  breaks, runs of short stanzas). The import report says how many poems were found; use the Poetry option
+  ("whole text is poetry" / "no poetry") when a file is misjudged. Three or more blank lines in a row start a new
+  poem. Bold/italic *inside* a poem's lines is not kept (poems are plain text with line breaks).
+* **DOCX fidelity:** character formatting (bold, italic, underline, strike, super/subscript, links, monospace),
+  alignment, indents, spacing, lists, tables, images, captions and breaks are kept. Font names, font sizes, colours
+  and line spacing from Word are deliberately *not* imported: the template's typography governs the book.
+  Indents/spacing used by most paragraphs are treated as the document's body default and dropped.
+* **Cover designer:** layered with presets, palettes, patterns and image filters. Text effects are limited to
+  shadow, upper-case and fit-to-box (no outline, curved text or letter spacing). The wrap-around spine width is an
+  *estimate* from your paper thickness; spine text is rotated top-to-bottom and appears when the spine is at least
+  8 mm. Confirm width and the printer's own template before ordering. Cover exports are not PDF/X.
 
 * **Fonts** come from the machine (see README). PDFs embed font subsets; verify licence permission yourself.
   Bold/italic faces are used when installed, otherwise the regular face (no synthetic bold).

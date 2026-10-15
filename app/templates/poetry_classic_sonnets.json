@@ -1,0 +1,59 @@
+{
+  "key": "poetry_classic_sonnets",
+  "name": "Poetry – Classic Sonnets",
+  "description": "Centred poems, capitals titles, one sonnet per page.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "Custom",
+    "width_mm": 127.0,
+    "height_mm": 203.0,
+    "margins": {
+      "top": 24,
+      "bottom": 28,
+      "inner": 22,
+      "outer": 20
+    },
+    "body_font": "Palatino Linotype",
+    "body_size": 12,
+    "line_height": 1.62,
+    "paragraph_spacing": 0.0,
+    "first_line_indent": 0,
+    "justify": false,
+    "chapter_right_page": true,
+    "chapter_drop": 100,
+    "stanza_gap": 1.0,
+    "poems_new_page": true,
+    "chapter_ornament": "rule",
+    "header_verso": "{author}",
+    "header_recto": "{title}",
+    "footer": "{page}",
+    "footer_position": "center"
+  },
+  "styles": {
+    "poetry": {
+      "font_family": "Palatino Linotype",
+      "font_size": 12,
+      "line_height": 1.62,
+      "left_indent": 0,
+      "align": "center"
+    },
+    "poetry_title": {
+      "font_family": "Palatino Linotype",
+      "bold": true,
+      "uppercase": true,
+      "font_size": 11,
+      "left_indent": 0,
+      "space_after": 16,
+      "align": "center"
+    },
+    "chapter_title": {
+      "font_family": "Palatino Linotype",
+      "font_size": 20,
+      "italic": true,
+      "bold": false,
+      "align": "center",
+      "space_after": 18
+    }
+  }
+}

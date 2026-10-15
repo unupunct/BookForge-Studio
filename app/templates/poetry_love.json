@@ -1,0 +1,62 @@
+{
+  "key": "poetry_love",
+  "name": "Poetry – Love Poems",
+  "description": "Centred Georgia italics, rose accents, bullet folios.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "A5",
+    "width_mm": 148.0,
+    "height_mm": 210.0,
+    "margins": {
+      "top": 25,
+      "bottom": 29,
+      "inner": 24,
+      "outer": 20
+    },
+    "body_font": "Georgia",
+    "body_size": 12,
+    "line_height": 1.72,
+    "paragraph_spacing": 0.0,
+    "first_line_indent": 0,
+    "justify": false,
+    "chapter_right_page": true,
+    "chapter_drop": 110,
+    "stanza_gap": 1.0,
+    "poems_new_page": true,
+    "chapter_ornament": "bullet",
+    "header_verso": "",
+    "header_recto": "",
+    "header_rule": false,
+    "footer": "· {page} ·",
+    "footer_position": "center"
+  },
+  "styles": {
+    "poetry": {
+      "font_family": "Georgia",
+      "font_size": 12,
+      "line_height": 1.72,
+      "left_indent": 0,
+      "align": "center"
+    },
+    "poetry_title": {
+      "font_family": "Georgia",
+      "italic": true,
+      "bold": false,
+      "font_size": 16,
+      "left_indent": 0,
+      "space_after": 16,
+      "color": "#8A3B4A",
+      "align": "center"
+    },
+    "chapter_title": {
+      "font_family": "Georgia",
+      "font_size": 20,
+      "italic": true,
+      "bold": false,
+      "align": "center",
+      "color": "#8A3B4A",
+      "space_after": 20
+    }
+  }
+}

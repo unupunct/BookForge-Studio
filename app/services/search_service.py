@@ -121,7 +121,7 @@ def _replace_runs(runs: list[Run], pat: re.Pattern[str], repl: str,
     """Replace matches in formatted text. The replacement takes the formatting of the first
     matched character, so matches that cross formatting boundaries are handled too."""
     text = "".join(r.text for r in runs)
-    fmts = [(r.bold, r.italic, r.underline, r.code, r.link) for r in runs for _ in r.text]
+    fmts = [r.fmt() for r in runs for _ in r.text]
     out_text: list[str] = []
     out_fmts: list = []
     pos = 0
@@ -132,7 +132,7 @@ def _replace_runs(runs: list[Run], pat: re.Pattern[str], repl: str,
         out_text.append(text[pos:m.start()])
         out_fmts.extend(fmts[pos:m.start()])
         out_text.append(repl)
-        out_fmts.extend([fmts[m.start()] if m.start() < len(fmts) else (False,) * 4 + (None,)] * len(repl))
+        out_fmts.extend([fmts[m.start()] if m.start() < len(fmts) else Run('').fmt()] * len(repl))
         pos = m.end()
         n += 1
     out_text.append(text[pos:])
@@ -140,7 +140,7 @@ def _replace_runs(runs: list[Run], pat: re.Pattern[str], repl: str,
     new = "".join(out_text)
     res: list[Run] = []
     for ch, f in zip(new, out_fmts):
-        if res and (res[-1].bold, res[-1].italic, res[-1].underline, res[-1].code, res[-1].link) == f:
+        if res and res[-1].fmt() == f:
             res[-1].text += ch
         else:
             res.append(Run(ch, *f))

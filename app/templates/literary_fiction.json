@@ -1,0 +1,51 @@
+{
+  "key": "literary_fiction",
+  "name": "Novel – Literary Fiction",
+  "description": "Quiet Palatino pages, Roman chapter numbers, generous drop.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "US Trade 6x9",
+    "width_mm": 152.4,
+    "height_mm": 228.6,
+    "margins": {
+      "top": 23,
+      "bottom": 27,
+      "inner": 26,
+      "outer": 19
+    },
+    "body_font": "Palatino Linotype",
+    "body_size": 11.5,
+    "line_height": 1.48,
+    "paragraph_spacing": 0.0,
+    "first_line_indent": 16,
+    "justify": true,
+    "chapter_right_page": true,
+    "chapter_drop": 110,
+    "chapter_number_style": "roman",
+    "chapter_label": "{n}",
+    "chapter_ornament": "rule",
+    "header_verso": "{author}",
+    "header_recto": "{title}",
+    "footer": "{page}",
+    "footer_position": "center"
+  },
+  "styles": {
+    "chapter_title": {
+      "font_family": "Palatino Linotype",
+      "font_size": 21,
+      "italic": true,
+      "bold": false,
+      "align": "center",
+      "space_after": 26
+    },
+    "chapter_label": {
+      "font_family": "Palatino Linotype",
+      "font_size": 12,
+      "align": "center",
+      "uppercase": true,
+      "color": "#444444",
+      "space_after": 8
+    }
+  }
+}

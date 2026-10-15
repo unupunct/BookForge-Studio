@@ -106,6 +106,10 @@ class AppState(QObject):
         self.path_changed.emit()
         self.request_layout(immediate=True)
 
+    def install_project(self, project: BookProject) -> None:
+        """Open an already built project as a new, unsaved book."""
+        self._install(project, None, True)
+
     def new_project(self, spec: NewBookSpec) -> None:
         self._install(create_project(spec, self.templates), None, True)
 

@@ -1,0 +1,56 @@
+{
+  "key": "poetry_haiku_pages",
+  "name": "Poetry – Haiku Pages",
+  "description": "Small square pages, one centred poem per page.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "Custom",
+    "width_mm": 150.0,
+    "height_mm": 150.0,
+    "margins": {
+      "top": 30,
+      "bottom": 34,
+      "inner": 24,
+      "outer": 24
+    },
+    "body_font": "Cambria",
+    "body_size": 12,
+    "line_height": 1.85,
+    "paragraph_spacing": 0.0,
+    "first_line_indent": 0,
+    "justify": false,
+    "chapter_right_page": true,
+    "chapter_drop": 100,
+    "stanza_gap": 1.0,
+    "poems_new_page": true,
+    "header_verso": "",
+    "header_recto": "",
+    "header_rule": false,
+    "footer": "{page}",
+    "footer_position": "center"
+  },
+  "styles": {
+    "poetry": {
+      "font_family": "Cambria",
+      "font_size": 12,
+      "line_height": 1.85,
+      "left_indent": 0,
+      "align": "center"
+    },
+    "poetry_title": {
+      "italic": true,
+      "bold": false,
+      "font_size": 11,
+      "space_after": 14,
+      "left_indent": 0,
+      "align": "center"
+    },
+    "chapter_title": {
+      "font_family": "Cambria",
+      "font_size": 15,
+      "align": "center",
+      "space_after": 20
+    }
+  }
+}

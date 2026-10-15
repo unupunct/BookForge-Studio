@@ -1,0 +1,52 @@
+{
+  "key": "thriller_paperback",
+  "name": "Novel – Thriller Paperback",
+  "description": "Compact mass-market format, bold numbered chapters.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "Custom",
+    "width_mm": 108.0,
+    "height_mm": 175.0,
+    "margins": {
+      "top": 13,
+      "bottom": 15,
+      "inner": 14,
+      "outer": 11
+    },
+    "body_font": "Georgia",
+    "body_size": 9.5,
+    "line_height": 1.36,
+    "paragraph_spacing": 0.0,
+    "first_line_indent": 11,
+    "justify": true,
+    "chapter_right_page": false,
+    "chapter_drop": 45,
+    "chapter_number_style": "arabic",
+    "chapter_label": "{n}",
+    "chapter_ornament": "none",
+    "header_verso": "{author}",
+    "header_recto": "{title}",
+    "header_rule": false,
+    "footer": "{page}",
+    "footer_position": "outer"
+  },
+  "styles": {
+    "chapter_title": {
+      "font_family": "Segoe UI",
+      "font_size": 13,
+      "bold": true,
+      "uppercase": true,
+      "align": "left",
+      "space_after": 16
+    },
+    "chapter_label": {
+      "font_family": "Segoe UI",
+      "font_size": 34,
+      "bold": true,
+      "align": "left",
+      "color": "#8B1E1E",
+      "space_after": 2
+    }
+  }
+}

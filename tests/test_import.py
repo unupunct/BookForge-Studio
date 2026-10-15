@@ -58,7 +58,7 @@ def test_txt_unknown_encoding_and_custom_pattern(tmp_path):
 
 def test_txt_poetry_mode_keeps_lines_and_scene_breaks(tmp_path):
     f = tmp_path / "p.txt"
-    f.write_text("Line one\nLine two\n\nStanza two\n\n\nProse here\n\n* * *\n\nAfter", encoding="utf-8")
+    f.write_text("Line one\nLine two\n\nStanza two\n\n\n\nProse here\n\n* * *\n\nAfter", encoding="utf-8")
     res = run_import(f, ImportOptions(preserve_line_breaks=True, detect_title=False)).result
     blocks = res.sections[0].blocks
     assert isinstance(blocks[0], PoetryBlock) and blocks[0].text == "Line one\nLine two\n\nStanza two"

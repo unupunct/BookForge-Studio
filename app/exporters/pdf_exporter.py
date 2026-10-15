@@ -53,10 +53,6 @@ class ExportCancelled(Exception):
     pass
 
 
-def _color(c: str | None):
-    return HexColor(c) if c else None
-
-
 def _is_full_page(r: RectItem, W: float, H: float) -> bool:
     return r.x <= 0.5 and r.y <= 0.5 and r.w >= W - 1 and r.h >= H - 1
 
@@ -100,49 +96,70 @@ def render_pdf(book: BookProject, layout: LayoutResult, path: Path, profile: Pdf
     def py(y_top: float) -> float:
         return PH - ofs - y_top
 
-    def draw_page(page: Page) -> None:
-        nonlocal last_level
-        for e_anchor, y in page.anchors.items():
-            c.bookmarkHorizontal(e_anchor, ofs, py(y) + 12)
-        for e in outline_by_page.get(page.index, []):
-            level = min(max(e.level - 1, 0), last_level + 1)
-            c.addOutlineEntry(e.title, e.anchor, level=level, closed=False)
-            last_level = level
-        for it in page.all_items():
-            if isinstance(it, RectItem):
-                x, y, w, h = it.x, it.y, it.w, it.h
-                if page.full_bleed and _is_full_page(it, W, H):
-                    x, y, w, h = -bleed, -bleed, W + 2 * bleed, H + 2 * bleed
-                if it.gradient_to and it.fill:
-                    c.saveState()
-                    p = c.beginPath()
-                    p.rect(ofs + x, py(y + h), w, h)
-                    c.clipPath(p, stroke=0, fill=0)
-                    c.linearGradient(ofs + x, py(y), ofs + x, py(y + h),
-                                     (HexColor(it.fill), HexColor(it.gradient_to)))
-                    c.restoreState()
-                    continue
-                if it.fill is None and it.stroke is None:
-                    continue
+    def draw_item(it, page: Page) -> None:
+        ox = ofs
+        oy = PH - ofs
+        rot = getattr(it, "rot", 0.0)
+        opacity = getattr(it, "opacity", 1.0)
+        transformed = bool(rot) or opacity < 0.999
+        if transformed:
+            c.saveState()
+            if opacity < 0.999:
+                c.setFillAlpha(opacity)
+                c.setStrokeAlpha(opacity)
+            if rot:
+                c.translate(ofs + it.pivot_x, PH - ofs - it.pivot_y)
+                c.rotate(rot)
+                ox = -it.pivot_x
+                oy = it.pivot_y
+
+        def gx(x: float) -> float:
+            return x + ox
+
+        def gy(y: float) -> float:
+            return oy - y
+
+        if isinstance(it, RectItem):
+            x, y, w, h = it.x, it.y, it.w, it.h
+            if page.full_bleed and _is_full_page(it, W, H):
+                x, y, w, h = -bleed, -bleed, W + 2 * bleed, H + 2 * bleed
+            if it.gradient_to and it.fill:
+                c.saveState()
+                p = c.beginPath()
+                if it.shape == "ellipse":
+                    p.ellipse(gx(x), gy(y + h), w, h)
+                elif it.radius:
+                    p.roundRect(gx(x), gy(y + h), w, h, it.radius)
+                else:
+                    p.rect(gx(x), gy(y + h), w, h)
+                c.clipPath(p, stroke=0, fill=0)
+                c.linearGradient(gx(x), gy(y), gx(x), gy(y + h),
+                                 (HexColor(it.fill), HexColor(it.gradient_to)))
+                c.restoreState()
+            elif it.fill is not None or it.stroke is not None:
                 c.saveState()
                 if it.fill:
                     c.setFillColor(HexColor(it.fill))
                 if it.stroke:
                     c.setStrokeColor(HexColor(it.stroke))
                     c.setLineWidth(it.stroke_width)
-                c.rect(ofs + x, py(y + h), w, h, stroke=1 if it.stroke else 0,
-                       fill=1 if it.fill else 0)
+                flags = dict(stroke=1 if it.stroke else 0, fill=1 if it.fill else 0)
+                if it.shape == "ellipse":
+                    c.ellipse(gx(x), gy(y + h), gx(x + w), gy(y), **flags)
+                elif it.radius:
+                    c.roundRect(gx(x), gy(y + h), w, h, it.radius, **flags)
+                else:
+                    c.rect(gx(x), gy(y + h), w, h, **flags)
                 c.restoreState()
-            elif isinstance(it, LineItem):
-                c.saveState()
-                c.setStrokeColor(HexColor(it.color))
-                c.setLineWidth(it.width)
-                c.line(ofs + it.x1, py(it.y1), ofs + it.x2, py(it.y2))
-                c.restoreState()
-            elif isinstance(it, Glyphs):
-                if not it.text:
-                    continue
-                t = c.beginText(ofs + it.x, py(it.y))
+        elif isinstance(it, LineItem):
+            c.saveState()
+            c.setStrokeColor(HexColor(it.color))
+            c.setLineWidth(it.width)
+            c.line(gx(it.x1), gy(it.y1), gx(it.x2), gy(it.y2))
+            c.restoreState()
+        elif isinstance(it, Glyphs):
+            if it.text:
+                t = c.beginText(gx(it.x), gy(it.y))
                 t.setFont(it.font, it.size)
                 t.setFillColor(HexColor(it.color))
                 if it.word_space:
@@ -153,10 +170,17 @@ def render_pdf(book: BookProject, layout: LayoutResult, path: Path, profile: Pdf
                     c.saveState()
                     c.setStrokeColor(HexColor(it.color))
                     c.setLineWidth(max(it.size * 0.05, 0.3))
-                    c.line(ofs + it.x, py(it.y) - it.size * 0.12, ofs + it.x + it.width,
-                           py(it.y) - it.size * 0.12)
+                    c.line(gx(it.x), gy(it.y) - it.size * 0.12, gx(it.x) + it.width,
+                           gy(it.y) - it.size * 0.12)
                     c.restoreState()
-                if it.link:
+                if it.strike:
+                    c.saveState()
+                    c.setStrokeColor(HexColor(it.color))
+                    c.setLineWidth(max(it.size * 0.05, 0.3))
+                    c.line(gx(it.x), gy(it.y) + it.size * 0.28, gx(it.x) + it.width,
+                           gy(it.y) + it.size * 0.28)
+                    c.restoreState()
+                if it.link and not rot:
                     rect = (ofs + it.x, py(it.y) - it.size * 0.25, ofs + it.x + it.width,
                             py(it.y) + it.size * 0.8)
                     if it.link.startswith("#"):
@@ -164,16 +188,28 @@ def render_pdf(book: BookProject, layout: LayoutResult, path: Path, profile: Pdf
                             c.linkRect("", it.link[1:], rect, relative=0, thickness=0)
                     elif it.link.lower().startswith(("http://", "https://", "mailto:")):
                         c.linkURL(it.link, rect, relative=0, thickness=0)
-            elif isinstance(it, ImageItem):
-                asset = book.assets.get(it.asset_id)
-                if asset is None or not asset.data:
-                    continue
+        elif isinstance(it, ImageItem):
+            asset = book.assets.get(it.asset_id)
+            if asset is not None and asset.data:
                 data, _fmt = prepare_image(asset, it.crop, it.w, profile.image_dpi,
-                                           profile.jpeg_quality)
+                                           profile.jpeg_quality, it.fx, it.flip)
                 x, y, w, h = it.x, it.y, it.w, it.h
                 if page.full_bleed and x <= 0.5 and y <= 0.5 and w >= W - 1 and h >= H - 1:
                     x, y, w, h = -bleed, -bleed, W + 2 * bleed, H + 2 * bleed
-                c.drawImage(ImageReader(io.BytesIO(data)), ofs + x, py(y + h), w, h, mask="auto")
+                c.drawImage(ImageReader(io.BytesIO(data)), gx(x), gy(y + h), w, h, mask="auto")
+        if transformed:
+            c.restoreState()
+
+    def draw_page(page: Page) -> None:
+        nonlocal last_level
+        for e_anchor, y in page.anchors.items():
+            c.bookmarkHorizontal(e_anchor, ofs, py(y) + 12)
+        for e in outline_by_page.get(page.index, []):
+            level = min(max(e.level - 1, 0), last_level + 1)
+            c.addOutlineEntry(e.title, e.anchor, level=level, closed=False)
+            last_level = level
+        for it in page.all_items():
+            draw_item(it, page)
 
     def draw_marks() -> None:
         c.saveState()

@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 
 from ..domain.content_blocks import Block, ParagraphBlock, PoetryBlock, Run, SceneBreakBlock
+from .postprocess import Blank, convert_poetry
 from ..domain.sections import Section
 from .base import (ImageSink, ImportFailure, ImportOptions, ImportReport, ImportResult,
                    split_into_sections, stem_title)
@@ -71,7 +72,7 @@ def import_txt(path: Path, raw: bytes, options: ImportOptions, sink: ImageSink) 
     sections: list[Section] = []
     fallback = doc_title or stem_title(path)
     for title, body in chapters:
-        blocks = _paragraphs(body, options.preserve_line_breaks)
+        blocks = _paragraphs(body, "always" if options.preserve_line_breaks else options.poetry_mode, report)
         if title is None and not blocks:
             continue
         sections.append(Section(title or fallback, "chapter", blocks=blocks))
@@ -83,37 +84,28 @@ def import_txt(path: Path, raw: bytes, options: ImportOptions, sink: ImageSink) 
     return ImportResult(sections, report, doc_title)
 
 
-def _paragraphs(lines: list[str], keep_breaks: bool) -> list[Block]:
-    blocks: list[Block] = []
+def _paragraphs(lines: list[str], mode: str, report: ImportReport) -> list[Block]:
+    """Group lines into paragraphs; verse keeps its lines, indentation and blank lines."""
+    blocks: list = []
     buf: list[str] = []
 
     def flush() -> None:
-        if not buf:
-            return
-        if keep_breaks:
-            blocks.append(PoetryBlock(text="\n".join(l.rstrip() for l in buf).strip("\n")))
-        else:
-            joined = " ".join(l.strip() for l in buf)
-            blocks.append(ParagraphBlock(runs=[Run(re.sub(r"\s+", " ", joined))]))
-        buf.clear()
+        if buf:
+            blocks.append(ParagraphBlock(runs=[Run("\n".join(l.rstrip() for l in buf))]))
+            buf.clear()
 
     for line in lines:
         if not line.strip():
-            if keep_breaks and buf:
-                # a blank line inside a poem separates stanzas; two blanks end the block
-                buf.append("")
-                if len(buf) >= 2 and buf[-2] == "":
-                    buf.pop()
-                    buf.pop()
-                    flush()
-            else:
-                flush()
+            flush()
+            blocks.append(Blank())
         elif SCENE_BREAK.match(line):
             flush()
             blocks.append(SceneBreakBlock())
         else:
-            buf.append(line)
-    if keep_breaks and buf and buf[-1] == "":
-        buf.pop()
+            buf.append(line.expandtabs(4))
     flush()
-    return blocks
+    out = convert_poetry(blocks, mode, report, deliberate_breaks=False)
+    for b in out:  # hard-wrapped prose: join the physical lines of a paragraph
+        if isinstance(b, ParagraphBlock):
+            b.runs = [Run(" ".join(b.runs[0].text.split()))]
+    return out

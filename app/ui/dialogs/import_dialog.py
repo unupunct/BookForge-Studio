@@ -54,14 +54,20 @@ class ImportDialog(QDialog):
         self.pattern.setPlaceholderText(r"Text files: regex for chapter lines (default: Chapter N, Capitolul N…)")
         self.detect = QCheckBox("Text files: use the first short line as the title")
         self.detect.setChecked(True)
-        self.poetry = QCheckBox("Text files: keep line breaks (poetry)")
+        self.poetry = QComboBox()
+        self.poetry.addItem("Poetry: detect poems automatically", "auto")
+        self.poetry.addItem("Poetry: the whole text is verse", "always")
+        self.poetry.addItem("Poetry: none (prose only)", "never")
+        self.keep = QCheckBox("Keep centring, indents and spacing that differ from the body text")
+        self.keep.setChecked(True)
         self.meta = QCheckBox("Use the document title as the book title if still unset")
         self.meta.setChecked(True)
         form.addRow("Chapters", self.split)
         form.addRow("Text encoding", self.encoding)
         form.addRow("Chapter pattern", self.pattern)
         form.addRow("", self.detect)
-        form.addRow("", self.poetry)
+        form.addRow("Poetry", self.poetry)
+        form.addRow("", self.keep)
         form.addRow("", self.meta)
         lay.addLayout(form)
 
@@ -96,7 +102,8 @@ class ImportDialog(QDialog):
         return ImportOptions(
             encoding=self.encoding.currentData(), split_level=self.split.currentData(),
             chapter_pattern=self.pattern.text().strip() or None, detect_title=self.detect.isChecked(),
-            preserve_line_breaks=self.poetry.isChecked(), update_metadata=self.meta.isChecked())
+            poetry_mode=self.poetry.currentData(), keep_formatting=self.keep.isChecked(),
+            update_metadata=self.meta.isChecked())
 
     def _parse(self) -> None:
         p = self.path.text().strip().strip('"')

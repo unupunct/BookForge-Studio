@@ -1,0 +1,54 @@
+{
+  "key": "poetry_free_verse",
+  "name": "Poetry – Free Verse Modern",
+  "description": "Sans-serif, flush-left, bold titles, wide stanza gaps.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "A5",
+    "width_mm": 148.0,
+    "height_mm": 210.0,
+    "margins": {
+      "top": 23,
+      "bottom": 26,
+      "inner": 23,
+      "outer": 18
+    },
+    "body_font": "Segoe UI",
+    "body_size": 10.5,
+    "line_height": 1.65,
+    "paragraph_spacing": 0.0,
+    "first_line_indent": 0,
+    "justify": false,
+    "chapter_right_page": false,
+    "chapter_drop": 70,
+    "stanza_gap": 1.25,
+    "header_verso": "{title}",
+    "header_recto": "{chapter}",
+    "footer": "{page}",
+    "footer_position": "outer"
+  },
+  "styles": {
+    "poetry": {
+      "font_family": "Segoe UI",
+      "font_size": 10.5,
+      "line_height": 1.65,
+      "left_indent": 0,
+      "align": "left"
+    },
+    "poetry_title": {
+      "font_family": "Segoe UI",
+      "bold": true,
+      "font_size": 13,
+      "left_indent": 0,
+      "space_after": 12
+    },
+    "chapter_title": {
+      "font_family": "Segoe UI",
+      "font_size": 20,
+      "bold": true,
+      "align": "left",
+      "space_after": 24
+    }
+  }
+}

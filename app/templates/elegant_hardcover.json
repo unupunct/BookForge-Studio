@@ -1,0 +1,52 @@
+{
+  "key": "elegant_hardcover",
+  "name": "Novel – Elegant Hardcover",
+  "description": "Wide margins, large type, word-like chapter openings.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "US Trade 6x9",
+    "width_mm": 152.4,
+    "height_mm": 228.6,
+    "margins": {
+      "top": 26,
+      "bottom": 30,
+      "inner": 29,
+      "outer": 22
+    },
+    "body_font": "Georgia",
+    "body_size": 12,
+    "line_height": 1.55,
+    "paragraph_spacing": 0.0,
+    "first_line_indent": 18,
+    "justify": true,
+    "chapter_right_page": true,
+    "chapter_drop": 140,
+    "chapter_number_style": "arabic",
+    "chapter_label": "Chapter {n}",
+    "chapter_ornament": "bullet",
+    "header_verso": "",
+    "header_recto": "",
+    "header_rule": false,
+    "footer": "{page}",
+    "footer_position": "center"
+  },
+  "styles": {
+    "chapter_title": {
+      "font_family": "Georgia",
+      "font_size": 26,
+      "bold": false,
+      "italic": true,
+      "align": "center",
+      "space_after": 28
+    },
+    "chapter_label": {
+      "font_family": "Georgia",
+      "font_size": 11,
+      "align": "center",
+      "uppercase": true,
+      "color": "#666666",
+      "space_after": 8
+    }
+  }
+}

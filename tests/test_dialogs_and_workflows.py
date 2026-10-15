@@ -13,7 +13,7 @@ from app.layout.model import Glyphs, ImageItem
 from app.layout.pagination import LayoutEngine
 from app.services.export_service import export_pdf
 from app.services.project_service import NewBookSpec
-from app.ui.dialogs.misc_dialogs import CoverDialog, ValidationDialog
+from app.ui.dialogs.misc_dialogs import ValidationDialog
 from app.ui.dialogs.template_dialog import TemplateDialog
 from app.ui.editor.block_dialogs import ImageDialog, RecipeDialog, TableDialog, choose_and_add_image
 from tests.conftest import RO, make_png
@@ -141,38 +141,6 @@ def test_quote_and_scene_break_layout():
     res = LayoutEngine().build(b)
     words = [i.text for p in res.pages for i in p.items if isinstance(i, Glyphs)]
     assert any("Ce frumos!" in w for w in words) and any("Cineva" in w for w in words)
-
-
-def test_cover_dialog_changes_and_exports_png(window, tmp_path, monkeypatch):
-    state = window.state
-    dlg = CoverDialog(state, window)
-    dlg.design.background = "#123456"
-    dlg.family.setCurrentText("sans")
-    dlg.t_size.setValue(44)
-    dlg.back.setPlainText("Un text pe coperta a patra.")
-    dlg._update()
-    assert not dlg.preview.pixmap().isNull()
-    png = tmp_path / "cover.png"
-    monkeypatch.setattr(QFileDialog, "getSaveFileName", staticmethod(lambda *a, **k: (str(png), "")))
-    dlg._export_png()
-    img = QImage(str(png))
-    assert not img.isNull() and img.width() > 1000
-    dlg._ok()
-    cv = state.project.settings.cover
-    assert cv.background == "#123456" and cv.title_size == 44 and cv.font_family == "sans"
-    assert "patra" in cv.back_text
-    state.undo_stack.undo()
-    assert state.project.settings.cover.background != "#123456"
-
-
-def test_cover_dialog_warns_about_low_resolution_image(window, monkeypatch):
-    state = window.state
-    asset = state.project.add_asset(make_png(300, 400), "lowres.png")
-    state.project.settings.cover.image_asset = asset.id
-    dlg = CoverDialog(state, window)
-    assert "below 300 dpi" in dlg.dpi_note.text()
-    state.project.settings.cover.image_asset = ""
-    dlg.close()
 
 
 def test_template_dialog_apply_duplicate_preview(window, monkeypatch):

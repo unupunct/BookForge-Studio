@@ -4,6 +4,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field, fields
 from typing import Any
 
+from .content_blocks import new_id
+
 MM_TO_PT = 72.0 / 25.4
 IN_TO_PT = 72.0
 
@@ -35,6 +37,62 @@ class Margins:
 
 
 @dataclass
+class CoverLayer:
+    """One element of a cover: text, image, shape, line, frame or generated pattern.
+
+    Geometry is stored as fractions of the page so the design survives page-size changes.
+    Text may contain {title} {subtitle} {author} {publisher} tokens, resolved at render time.
+    """
+    kind: str = "text"  # text | image | rect | ellipse | line | frame | pattern
+    id: str = field(default_factory=new_id)
+    name: str = ""
+    role: str = ""  # title | subtitle | author | publisher | accent | deco | photo (palettes use roles)
+    x: float = 0.1
+    y: float = 0.1
+    w: float = 0.8
+    h: float = 0.2
+    rotation: float = 0.0
+    opacity: float = 1.0
+    visible: bool = True
+    locked: bool = False
+    # shapes / frames / patterns
+    fill: str | None = "#FFFFFF"
+    fill2: str | None = None  # gradient end (vertical)
+    stroke: str | None = None
+    stroke_width: float = 1.0
+    radius: float = 0.0  # corner radius in points
+    pattern: str = "stripes"  # stripes | dots | grid | waves | circles | triangles
+    scale: float = 18.0  # pattern cell size in points
+    # text
+    text: str = ""
+    font_family: str = "serif"
+    size: float = 24.0
+    bold: bool = False
+    italic: bool = False
+    color: str = "#FFFFFF"
+    align: str = "center"
+    line_height: float = 1.15
+    uppercase: bool = False
+    autofit: bool = False  # shrink the text until it fits the box
+    valign: str = "top"  # top | middle | bottom
+    shadow: bool = False
+    shadow_color: str = "#000000"
+    # image
+    asset: str = ""
+    fit: str = "cover"  # cover (centre-cropped) | contain
+    flip: bool = False
+    fx: dict = field(default_factory=dict)  # grayscale, sepia, brightness, contrast, saturation, blur, tint, tint_alpha
+
+    def to_dict(self) -> dict[str, Any]:
+        return {f.name: getattr(self, f.name) for f in fields(self)}
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "CoverLayer":
+        known = {f.name for f in fields(cls)}
+        return cls(**{k: v for k, v in d.items() if k in known})
+
+
+@dataclass
 class CoverDesign:
     enabled: bool = True
     background: str = "#2B2B2B"
@@ -49,14 +107,29 @@ class CoverDesign:
     author_size: float = 16.0
     back_text: str = ""
     publisher_text: str = ""
+    # Layered design. When a side has no layers the simple fields above generate the cover.
+    front_layers: list[CoverLayer] = field(default_factory=list)
+    back_layers: list[CoverLayer] = field(default_factory=list)
+    back_background: str | None = None  # None -> same as the front
+    spine_color: str | None = None  # None -> same as the front background
+    spine_text: bool = True  # title and author printed along the spine of a wrap-around cover
+    preset: str = ""
 
     def to_dict(self) -> dict[str, Any]:
-        return {f.name: getattr(self, f.name) for f in fields(self)}
+        d: dict[str, Any] = {}
+        for f in fields(self):
+            v = getattr(self, f.name)
+            d[f.name] = [x.to_dict() for x in v] if f.name in ("front_layers", "back_layers") else v
+        return d
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> "CoverDesign":
         known = {f.name for f in fields(cls)}
-        return cls(**{k: v for k, v in d.items() if k in known})
+        kw = {k: v for k, v in d.items() if k in known and k not in ("front_layers", "back_layers")}
+        c = cls(**kw)
+        c.front_layers = [CoverLayer.from_dict(x) for x in d.get("front_layers", [])]
+        c.back_layers = [CoverLayer.from_dict(x) for x in d.get("back_layers", [])]
+        return c
 
 
 @dataclass
@@ -84,6 +157,11 @@ class BookSettings:
     chapter_new_page: bool = True
     chapter_right_page: bool = False
     chapter_drop: float = 60.0  # points of drop at chapter opening
+    chapter_number_style: str = "none"  # none | arabic | roman
+    chapter_label: str = "Chapter {n}"  # printed above the title when numbering is on
+    chapter_ornament: str = "none"  # none | rule | dots | stars | bullet | dash
+    stanza_gap: float = 0.9  # blank-line height in poems, as a multiple of the line height
+    poems_new_page: bool = False  # every poem starts on a new page
     # Front matter
     show_toc: bool = True
     toc_depth: int = 2

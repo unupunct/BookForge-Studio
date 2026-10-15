@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import (QColor, QFont, QFontDatabase, QImage, QLinearGradient, QPainter, QPen)
+from PySide6.QtGui import (QColor, QFont, QFontDatabase, QImage, QLinearGradient, QPainter,
+                           QPainterPath, QPen)
 
 from ...domain.book import Asset
 from ...layout.model import Glyphs, ImageItem, LineItem, Page, RectItem
@@ -33,13 +34,21 @@ def qfont_for(key: str, size: float, word_space: float = 0.0, scale: float = 1.0
     return f
 
 
-def _asset_image(asset: Asset) -> QImage:
-    img = _image_cache.get(asset.sha256 or asset.id)
+def _asset_image(asset: Asset, fx=None, flip: bool = False) -> QImage:
+    key = (asset.sha256 or asset.id, tuple(fx) if fx else None, flip)
+    img = _image_cache.get(key)
     if img is None:
-        img = QImage.fromData(asset.data)
+        if fx or flip:
+            from ...services.image_service import apply_fx, open_image
+            import io
+            buf = io.BytesIO()
+            apply_fx(open_image(asset.data), fx, flip).save(buf, "PNG")
+            img = QImage.fromData(buf.getvalue())
+        else:
+            img = QImage.fromData(asset.data)
         if len(_image_cache) > 32:
             _image_cache.clear()
-        _image_cache[asset.sha256 or asset.id] = img
+        _image_cache[key] = img
     return img
 
 
@@ -60,19 +69,43 @@ def render_page(page: Page, assets: dict[str, Asset], scale: float = 1.0,
 
 
 def _draw(p: QPainter, it, assets: dict[str, Asset], s: float) -> None:
+    rot = getattr(it, "rot", 0.0)
+    opacity = getattr(it, "opacity", 1.0)
+    changed = bool(rot) or opacity < 0.999
+    if changed:
+        p.save()
+        p.setOpacity(opacity)
+        if rot:
+            p.translate(it.pivot_x * s, it.pivot_y * s)
+            p.rotate(-rot)  # layout rotation is counter-clockwise; QPainter's is clockwise
+            p.translate(-it.pivot_x * s, -it.pivot_y * s)
+        # after the transform, drawing uses the same page coordinates as unrotated items
+    _draw_plain(p, it, assets, s)
+    if changed:
+        p.restore()
+
+
+def _draw_plain(p: QPainter, it, assets: dict[str, Asset], s: float) -> None:
     if isinstance(it, RectItem):
         r = QRectF(it.x * s, it.y * s, it.w * s, it.h * s)
+        path = QPainterPath()
+        if it.shape == "ellipse":
+            path.addEllipse(r)
+        elif it.radius:
+            path.addRoundedRect(r, it.radius * s, it.radius * s)
+        else:
+            path.addRect(r)
         if it.fill and it.gradient_to:
             g = QLinearGradient(r.topLeft(), r.bottomLeft())
             g.setColorAt(0, QColor(it.fill))
             g.setColorAt(1, QColor(it.gradient_to))
-            p.fillRect(r, g)
+            p.fillPath(path, g)
         elif it.fill:
-            p.fillRect(r, QColor(it.fill))
+            p.fillPath(path, QColor(it.fill))
         if it.stroke:
             p.setPen(QPen(QColor(it.stroke), max(it.stroke_width * s, 0.5)))
             p.setBrush(Qt.NoBrush)
-            p.drawRect(r)
+            p.drawPath(path)
     elif isinstance(it, LineItem):
         p.setPen(QPen(QColor(it.color), max(it.width * s, 0.5)))
         p.drawLine(QPointF(it.x1 * s, it.y1 * s), QPointF(it.x2 * s, it.y2 * s))
@@ -82,6 +115,10 @@ def _draw(p: QPainter, it, assets: dict[str, Asset], s: float) -> None:
         p.setFont(qfont_for(it.font, it.size, it.word_space, s))
         p.setPen(QColor(it.color))
         p.drawText(QPointF(it.x * s, it.y * s), it.text)
+        if it.strike:
+            p.setPen(QPen(QColor(it.color), max(it.size * 0.05 * s, 0.5)))
+            y = (it.y - it.size * 0.28) * s
+            p.drawLine(QPointF(it.x * s, y), QPointF((it.x + it.width) * s, y))
         if it.underline:
             p.setPen(QPen(QColor(it.color), max(it.size * 0.05 * s, 0.5)))
             y = (it.y + it.size * 0.12) * s
@@ -91,12 +128,14 @@ def _draw(p: QPainter, it, assets: dict[str, Asset], s: float) -> None:
         target = QRectF(it.x * s, it.y * s, it.w * s, it.h * s)
         if asset is None or not asset.data:
             return
-        img = _asset_image(asset)
+        img = _asset_image(asset, it.fx, it.flip)
         if img.isNull():
             return
         src = QRectF(0, 0, img.width(), img.height())
         if it.crop:
             l, t, r, b = it.crop
+            if it.flip:
+                l, r = 1 - r, 1 - l
             src = QRectF(l * img.width(), t * img.height(), (r - l) * img.width(),
                          (b - t) * img.height())
         p.drawImage(target, img, src)

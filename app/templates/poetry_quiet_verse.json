@@ -1,0 +1,56 @@
+{
+  "key": "poetry_quiet_verse",
+  "name": "Poetry – Quiet Verse",
+  "description": "Airy Cambria pages, indented lines, italic titles.",
+  "builtin": true,
+  "version": 1,
+  "settings": {
+    "page_size": "A5",
+    "width_mm": 148.0,
+    "height_mm": 210.0,
+    "margins": {
+      "top": 26,
+      "bottom": 30,
+      "inner": 26,
+      "outer": 21
+    },
+    "body_font": "Cambria",
+    "body_size": 11.5,
+    "line_height": 1.7,
+    "paragraph_spacing": 0.0,
+    "first_line_indent": 0,
+    "justify": false,
+    "chapter_right_page": true,
+    "chapter_drop": 120,
+    "stanza_gap": 1.0,
+    "poems_new_page": false,
+    "header_verso": "",
+    "header_recto": "",
+    "header_rule": false,
+    "footer": "{page}",
+    "footer_position": "outer"
+  },
+  "styles": {
+    "poetry": {
+      "font_family": "Cambria",
+      "font_size": 11.5,
+      "line_height": 1.7,
+      "left_indent": 26,
+      "align": "left"
+    },
+    "poetry_title": {
+      "italic": true,
+      "bold": false,
+      "font_size": 13,
+      "space_after": 14,
+      "left_indent": 26
+    },
+    "chapter_title": {
+      "font_family": "Cambria",
+      "font_size": 17,
+      "bold": false,
+      "align": "center",
+      "space_after": 30
+    }
+  }
+}

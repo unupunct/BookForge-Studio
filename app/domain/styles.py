@@ -26,6 +26,7 @@ class StyleDefinition:
     page_break_before: bool | None = None
     background: str | None = None
     border: bool | None = None
+    uppercase: bool | None = None
     user_modified: bool = False  # protects the style from template re-application
 
     def to_dict(self) -> dict[str, Any]:
@@ -57,6 +58,7 @@ class ResolvedStyle:
     page_break_before: bool = False
     background: str | None = None
     border: bool = False
+    uppercase: bool = False
 
 
 _PROPS = [f.name for f in fields(ResolvedStyle) if f.name != "name"]
@@ -75,6 +77,8 @@ def default_styles() -> dict[str, StyleDefinition]:
         S("part_title", based_on="body", font_size=26, bold=True, align="center",
           first_indent=0, line_height=1.2, space_before=120, space_after=24,
           page_break_before=True),
+        S("chapter_label", based_on="body", font_size=11, align="left", first_indent=0,
+          line_height=1.2, space_after=4, keep_with_next=True, color="#555555"),
         S("chapter_title", based_on="body", font_size=22, bold=True, align="left",
           first_indent=0, line_height=1.2, space_before=60, space_after=28,
           keep_with_next=True),

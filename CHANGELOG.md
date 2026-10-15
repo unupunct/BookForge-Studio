@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.2.0
+
+### Added
+- Importers keep text formatting: strike, super/subscript, alignment, indents and spacing deviating from the body
+  text, soft line breaks; "Chapter N" lines promoted to chapters when no Heading styles exist; author and title read
+  from DOCX properties.
+- Poetry: automatic verse detection for DOCX, TXT, Markdown and HTML (or force/disable it); every line, leading
+  indentation and blank line is kept; blank lines map to stanza gaps (template-controlled, `stanza_gap`);
+  poem alignment (left/centre), optional one-poem-per-page rule.
+- **New book from manuscript** (Ctrl+Shift+N): file + kind of book + template -> a finished project with cover, title
+  page, copyright, contents, chapters, page numbers and the template's design.
+- 10 novel templates and 10 poetry templates (33 in total) with chapter numbering (arabic/Roman, custom label),
+  chapter drop, title ornaments, uppercase heads, running heads and folio styles; Constantia, Candara, Corbel and
+  Tahoma added to the font table.
+- Layered cover designer with presets, palettes, shapes, frames, patterns, image filters, rotation, opacity,
+  shadow, fit-to-box text, canvas drag/resize; digital front cover PNG/PDF, print front+back with bleed and crop
+  marks, and wrap-around print artwork with spine.
+- Editor: alignment tools, super/subscript, strike; DOCX/HTML exports keep them.
+- 232 automated tests.
+
+### Changed
+- Chapter titles at the top of a page honour `chapter_drop` (previously ignored at page top).
+- Removed unused settings (`list_of_figures`, `list_of_tables`).
+
+
 ## 0.1.0 – first usable release (MVP)
 
 ### Added

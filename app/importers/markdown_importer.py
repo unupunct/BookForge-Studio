@@ -12,6 +12,7 @@ from ..domain.content_blocks import (Block, CodeBlock, HeadingBlock, ImageBlock,
 from ..domain.sections import Section
 from .base import (ImageSink, ImportFailure, ImportOptions, ImportReport, ImportResult,
                    split_into_sections, stem_title)
+from .postprocess import SOFT, finish_text_blocks, promote_chapter_headings
 from .txt_importer import decode_text
 
 
@@ -61,7 +62,7 @@ class _Walker:
             if ty == "text":
                 runs.append(Run(t.content, bold=bool(bold), italic=bool(italic), link=link))
             elif ty == "softbreak":
-                runs.append(Run(" ", bold=bool(bold), italic=bool(italic), link=link))
+                runs.append(Run(SOFT, bold=bool(bold), italic=bool(italic), link=link))
             elif ty == "hardbreak":
                 runs.append(Run("\n"))
             elif ty == "code_inline":
@@ -233,5 +234,8 @@ def import_markdown(path: Path, raw: bytes, options: ImportOptions, sink: ImageS
     if options.split_level == 0 and isinstance(first, HeadingBlock) and first.level == 1:
         title = runs_text(first.runs)
     report.count("blocks", len(walker.blocks))
-    sections = split_into_sections(walker.blocks, options.split_level, stem_title(path), report)
+    mode = "always" if options.preserve_line_breaks else options.poetry_mode
+    blocks = promote_chapter_headings(walker.blocks, options.split_level, options.chapter_pattern, report)
+    blocks = finish_text_blocks(blocks, mode, report, False)
+    sections = split_into_sections(blocks, options.split_level, stem_title(path), report)
     return ImportResult(sections, report, title)
