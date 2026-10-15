@@ -3,7 +3,7 @@
 A local-first Windows desktop application that turns manuscripts into professionally formatted books and
 validated PDFs. Everything runs offline; manuscripts and images never leave your computer.
 
-**Status: 0.2.2.** See [docs/limitations.md](docs/limitations.md) for exactly what is
+**Status: 0.2.3.** See [docs/limitations.md](docs/limitations.md) for exactly what is
 and is not implemented.
 
 ## Quick start
@@ -62,7 +62,7 @@ Details and design decisions: [docs/architecture.md](docs/architecture.md).
 
 ## Testing
 
-`scripts\run_tests.bat` (or `pytest`) runs 244 tests that inspect real output: PDFs are opened with PyMuPDF
+`scripts\run_tests.bat` (or `pytest`) runs 246 tests that inspect real output: PDFs are opened with PyMuPDF
 (page size, metadata, extracted text incl. Romanian diacritics, embedded fonts, bookmarks, links, image bounding
 boxes, text positions versus the layout model), DOCX files are re-read with python-docx, archives are attacked
 with traversal / corruption / interruption scenarios, and the UI is driven headlessly with Qt's offscreen platform.

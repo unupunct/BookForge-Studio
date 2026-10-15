@@ -209,3 +209,55 @@ def test_no_blank_copyright_page_when_there_is_nothing_to_print(tmp_path):
     # the only blank left is the leaf facing the first poem: the template opens chapters on right-hand pages
     blanks = [p.index for p in res.pages if p.blank]
     assert blanks == [1, 3] and not [i for i in res.issues if i.code == "accidental_blank_page"]
+
+
+def test_every_poem_on_its_own_page_tightens_slight_overflow_and_keeps_all_text(tmp_path):
+    f = tmp_path / "c.docx"
+    collection_docx(f, n=12, long_every=2)
+    book = create_from_manuscript(NewBookSpec(profile="poetry", template="poetry_ballad_epic"),
+                                  run_import(f, ImportOptions()), ImportOptions())
+    book.settings.poems_new_page = True
+    res = LayoutEngine().build(book)
+    ps = [b for s in book.sections for b in s.blocks if isinstance(b, PoetryBlock)]
+    owner = {}
+    for p in ps:
+        for pg in res.block_pages[p.id]:
+            assert owner.setdefault(pg, p.id) == p.id  # a page never holds two poems
+    assert len({res.block_pages[p.id][0] for p in ps}) == len(ps)
+    for p in ps:  # a continuation page carries at least 4 lines (widow rule for own-page poems)
+        pages = res.block_pages[p.id]
+        if len(pages) > 1:
+            rows = {round(g.y, 1) for g in res.pages[pages[-1]].items
+                    if isinstance(g, Glyphs) and g.block_id == p.id and g.text != "(continued)"}
+            assert len(rows) >= 4
+    words = [g.text for pg in res.pages for g in pg.items if isinstance(g, Glyphs)]
+    assert sum(w.count("Câte") for w in words) >= 12 * 1  # nothing lost
+
+
+def test_slightly_too_tall_poem_is_tightened_onto_one_page(tmp_path):
+    from app.domain.book import BookProject
+    from app.domain.sections import Section
+    b = BookProject()
+    b.settings.poems_new_page = True
+    probe = PoetryBlock(text="\n".join(f"verse {i}" for i in range(10)))
+    b.sections = [Section("P", "chapter", blocks=[probe])]
+    one = LayoutEngine().build(b)
+    # find a line count that overflows at normal spacing but fits when tightened
+    for n in range(30, 80):
+        poem = PoetryBlock(text="\n".join(f"verse {i}" for i in range(n)))
+        b.sections = [Section("P", "chapter", blocks=[poem])]
+        res = LayoutEngine().build(b)
+        if len(res.block_pages[poem.id]) == 1:
+            last_single = n
+        else:
+            break
+    assert last_single >= 30
+    b.settings.line_height = 1.8
+    b.styles["poetry"].line_height = 1.8
+    sizes = []
+    for n in (last_single, last_single + 2):
+        poem = PoetryBlock(text="\n".join(f"verse {i}" for i in range(n)))
+        b.sections = [Section("P", "chapter", blocks=[poem])]
+        res = LayoutEngine().build(b)
+        sizes.append(len(res.block_pages[poem.id]))
+    assert sizes[0] == 1  # tightening let a poem that overflows at 1.8 leading fit on one page

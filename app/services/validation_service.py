@@ -97,7 +97,7 @@ def validate_book(book: BookProject, layout: LayoutResult | None = None,
     if layout is not None:
         counts: dict[str, list] = {}
         for i in layout.issues:
-            if i.severity == "info" and i.code in ("poem_continues", "code_wrapped", "poem_page"):
+            if i.severity == "info" and i.code in ("poem_continues", "code_wrapped", "poem_page", "poem_tightened"):
                 counts.setdefault(i.code, []).append(i)
         for code, items in counts.items():
             if len(items) > 3:  # one summary instead of hundreds of identical notes

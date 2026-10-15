@@ -294,17 +294,52 @@ def code_flow(block: CodeBlock, ctx: BuildContext) -> list[Flow]:
 
 
 # ------------------------------------------------------------------- poetry
+def _atoms_height(atoms: list[Atom]) -> float:
+    return sum(a.height + (a.gap_before if i else 0.0) for i, a in enumerate(atoms))
+
+
 def poetry_flows(block: PoetryBlock, ctx: BuildContext) -> list[Flow]:
-    style = ctx.style("poetry", block.style)
-    leading = style.font_size * style.line_height
-    stanza_gap = leading * ctx.settings.stanza_gap
-    align = block.align or style.align
+    base = ctx.style("poetry", block.style)
+    own_page = block.one_per_page or ctx.settings.poems_new_page
+    align = block.align or base.align
     if align not in ("left", "center", "right"):
         align = "left"
-    atoms: list[Atom] = []
-    header: list[Atom] = []
+    lines = block.text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+
+    def build(style: ResolvedStyle) -> list[Atom]:
+        leading = style.font_size * style.line_height
+        stanza_gap = leading * ctx.settings.stanza_gap
+        space_w = text_width(" ", style.font_family, style.font_size)
+        atoms: list[Atom] = []
+        pending_gap = 0.0
+        for raw in lines:
+            if not raw.strip():
+                pending_gap += stanza_gap  # every blank line in the source adds one stanza gap
+                continue
+            raw = raw.expandtabs(4)
+            indent = (len(raw) - len(raw.lstrip(" "))) * space_w if align == "left" else 0.0
+            line_atoms = text_atoms(plain_runs(raw.strip()), style, ctx, block.id,
+                                    left_extra=min(indent, ctx.width * 0.5), align=align, decorate=False)
+            # Wrapped continuation lines get a hanging indent so they read as one line.
+            for i, a in enumerate(line_atoms):
+                if i > 0:
+                    a.items = [it.moved(14, 0) if isinstance(it, Glyphs) else it for it in a.items]
+            if line_atoms:
+                line_atoms[0].gap_before = pending_gap
+            pending_gap = 0.0
+            atoms.extend(line_atoms)
+        if block.signature.strip():  # printed with the poem's last lines, never alone on a page
+            sig_style = replace(style, italic=True, font_size=style.font_size * 0.85, align="right",
+                                left_indent=0.0, color="#666666")
+            sig = text_atoms(plain_runs(block.signature.strip()), sig_style, ctx, block.id, align="right",
+                             decorate=False)
+            if sig:
+                sig[0].gap_before = leading * 0.6
+                atoms.extend(sig)
+        return atoms
+
     flows: list[Flow] = []
-    space_w = text_width(" ", style.font_family, style.font_size)
+    title_h = 0.0
     if block.title:
         tstyle = ctx.style("poetry_title")
         t = _flow_from_style(text_atoms(plain_runs(block.title), tstyle, ctx, block.id), tstyle, ctx,
@@ -312,34 +347,24 @@ def poetry_flows(block: PoetryBlock, ctx: BuildContext) -> list[Flow]:
         t.keep_with_next = True
         t.keep_together = True
         flows.append(t)
-    pending_gap = 0.0
-    nlines = 0
-    for raw in block.text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
-        if not raw.strip():
-            pending_gap += stanza_gap  # every blank line in the source adds one stanza gap
-            continue
-        raw = raw.expandtabs(4)
-        indent = (len(raw) - len(raw.lstrip(" "))) * space_w if align == "left" else 0.0
-        line_atoms = text_atoms(plain_runs(raw.strip()), style, ctx, block.id,
-                                left_extra=min(indent, ctx.width * 0.5),
-                                align=align, decorate=False)
-        # Wrapped continuation lines get a hanging indent so they read as one line.
-        for i, a in enumerate(line_atoms):
-            if i > 0:
-                a.items = [it.moved(14, 0) if isinstance(it, Glyphs) else it for it in a.items]
-        if line_atoms:
-            line_atoms[0].gap_before = pending_gap
-        pending_gap = 0.0
-        atoms.extend(line_atoms)
-        nlines += 1
-    if block.signature.strip():  # printed with the poem's last lines, never alone on a page
-        sig_style = replace(style, italic=True, font_size=style.font_size * 0.85, align="right",
-                            left_indent=0.0, color="#666666")
-        sig = text_atoms(plain_runs(block.signature.strip()), sig_style, ctx, block.id, align="right",
-                         decorate=False)
-        if sig:
-            sig[0].gap_before = leading * 0.6
-            atoms.extend(sig)
+        title_h = t.height + t.space_after + 6
+    style = base
+    atoms = build(style)
+    tightened = False
+    if own_page:
+        # A poem that owns its page and only just overflows is tightened (leading reduced, never
+        # below 1.2) so it does not leave two stray lines on a second page.
+        avail = ctx.height - title_h - 14
+        lh = style.line_height
+        while _atoms_height(atoms) > avail and lh > 1.2 + 1e-6:
+            lh = max(lh - 0.03, 1.2)
+            style = replace(base, line_height=lh)
+            atoms = build(style)
+            tightened = True
+        if _atoms_height(atoms) > avail:  # does not fit even tightened: split normally, restore spacing
+            style, atoms, tightened = base, build(base), False
+    leading = style.font_size * style.line_height
+    header: list[Atom] = []
     if block.continuation_marker:
         face = fonts.face(style.font_family, False, True)
         sz = style.font_size * 0.85
@@ -349,14 +374,17 @@ def poetry_flows(block: PoetryBlock, ctx: BuildContext) -> list[Flow]:
                                   width=fonts.width("(continued)", face.key, sz),
                                   block_id=block.id)])]
     f = Flow(block_id=block.id, atoms=atoms, space_before=style.space_before + 6,
-             space_after=style.space_after + 12, widow=2, orphan=2, header_atoms=header,
-             keep_together=True)
-    if block.one_per_page or ctx.settings.poems_new_page:
+             space_after=style.space_after + 12, widow=4 if own_page else 2, orphan=2,
+             header_atoms=header, keep_together=True)
+    if own_page:
         flows.insert(0, Flow(control="page_break", ctl={"blank": False, "recto": False}))
         tail = Flow(control="page_break", ctl={"blank": False, "recto": False})
         flows.append(f)
         flows.append(tail)
         f.issues.append(("info", "poem_page", "Poem placed on its own page"))
+        if tightened:
+            f.issues.append(("info", "poem_tightened",
+                             f"Line spacing of a poem was tightened to {style.line_height:.2f} to fit one page"))
     else:
         flows.append(f)
     f.ctl["poem"] = True

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.3
+
+### Added
+- "Every poem starts on a new page" (Book tab) now also tidies the result: a poem that only slightly overflows its
+  page has its line spacing tightened (never below 1.2) so it stays on one page, and a poem that must continue
+  keeps at least 4 lines on its last page instead of 1-2 stray lines. Sample collection: 429 -> 482 pages, 35
+  poems on a single page, shortest continuation page 4 lines, all 37,372 words present and in order.
+
+
 ## 0.2.2
 
 ### Fixed
