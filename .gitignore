@@ -6,3 +6,4 @@ dist/
 *.spec.bak
 .pytest_cache/
 *.autosave
+dist-installer/
