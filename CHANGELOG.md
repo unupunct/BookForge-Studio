@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.2
+
+### Fixed
+- A poem number (title) could be left alone at the top or bottom of a page while its poem started on the next page,
+  when the title plus the poem did not fit on one page. Such poems now split normally and keep their title with the
+  first lines (checked on all 169 poems of the sample collection: no stranded numbers).
+- "New book from manuscript" no longer creates an empty copyright page when there is no author, year, publisher,
+  ISBN or rights text (the page is disabled; enable it after filling in the details).
+
+
 ## 0.2.1 (found by importing a real 169-poem Facebook export)
 
 ### Fixed

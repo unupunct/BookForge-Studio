@@ -178,6 +178,11 @@ def create_from_manuscript(spec: NewBookSpec, staged, options, templates: Templa
         book.metadata.title = res.title
     if not book.metadata.author and getattr(res, "author", None):
         book.metadata.author = res.author
+    md = book.metadata
+    if not any(v.strip() for v in (md.author, md.rights, md.publisher, md.isbn, md.year)):
+        for s in book.sections:  # nothing to print: no blank copyright page (enable it once details exist)
+            if s.kind == "copyright":
+                s.enabled = False
     chapters = [s for s in new_sections if s.kind == "chapter"]
     if len(chapters) == 1 and chapters[0].title.strip().lower() == book.metadata.title.strip().lower():
         chapters[0].show_title = False  # the title page already carries the book's name

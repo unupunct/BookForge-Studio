@@ -185,3 +185,27 @@ def test_unique_signatures_are_kept_by_default(tmp_path):
     d.save(f)
     ps = poems(run_import(f).result)
     assert [p.signature for p in ps] == ["\u2014 Ana", "\u2014 Ion", "\u2014 Maria"]  # distinct lines are content
+
+
+def test_poem_number_never_stranded_even_when_title_plus_poem_exceeds_a_page(tmp_path):
+    f = tmp_path / "c.docx"
+    collection_docx(f, n=40, long_every=1)
+    book = create_from_manuscript(NewBookSpec(profile="poetry", template="poetry_ballad_epic"),
+                                  run_import(f, ImportOptions()), ImportOptions())
+    res = LayoutEngine().build(book)
+    for p in [b for s in book.sections for b in s.blocks if isinstance(b, PoetryBlock)]:
+        for pg in res.block_pages[p.id]:
+            rows = {round(g.y, 1) for g in res.pages[pg].items if isinstance(g, Glyphs) and g.block_id == p.id}
+            assert len(rows) >= 3, f"poem {p.title} has a lone line on page {pg}"
+
+
+def test_no_blank_copyright_page_when_there_is_nothing_to_print(tmp_path):
+    f = tmp_path / "c.docx"
+    collection_docx(f)
+    book = create_from_manuscript(NewBookSpec(profile="poetry", template="poetry_ballad_epic"),
+                                  run_import(f, ImportOptions()), ImportOptions())
+    assert not next(s for s in book.sections if s.kind == "copyright").enabled
+    res = LayoutEngine().build(book)
+    # the only blank left is the leaf facing the first poem: the template opens chapters on right-hand pages
+    blanks = [p.index for p in res.pages if p.blank]
+    assert blanks == [1, 3] and not [i for i in res.issues if i.code == "accidental_blank_page"]

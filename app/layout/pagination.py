@@ -49,6 +49,7 @@ class Paginator:
         self.chapter_title = ""
         self.section_id: str | None = None
         self.opening_pending = False
+        self._kwn_run = 0.0  # height of keep-with-next flows (e.g. a poem title) just placed on this page
 
     # ------------------------------------------------------------- pages
     def _geometry(self, index: int, matter: str) -> tuple[str, tuple[float, float, float, float]]:
@@ -83,6 +84,7 @@ class Paginator:
             self.opening_pending = False
             self.y = self.cur.content_box[1]
             self.pending_after = 0.0
+            self._kwn_run = 0.0
         return self.cur
 
     def _new_page(self, recto: bool = False) -> None:
@@ -200,7 +202,7 @@ class Paginator:
                     self._chain_height(flows, i, 0, content_h) > remaining:
                 self._new_page()
                 page = self._ensure_page()
-            elif f.keep_together and f.height <= content_h and f.height > remaining:
+            elif f.keep_together and f.height + self._kwn_run <= content_h and f.height > remaining:
                 self._new_page()
                 page = self._ensure_page()
 
@@ -235,7 +237,7 @@ class Paginator:
             fit_k = k
             remaining_atoms = n - idx - k
             if remaining_atoms > 0:  # a page break falls inside this flow
-                if f.keep_together and idx == 0 and not at_top and f.height <= content_h:
+                if f.keep_together and idx == 0 and not at_top and f.height + self._kwn_run <= content_h:
                     k = 0
                 else:
                     orphans = min(f.orphan, n)
@@ -278,6 +280,7 @@ class Paginator:
                                 "A poem continues on the next page", f.block_id)
                 self._new_page()
         self.pending_after = f.space_after
+        self._kwn_run = self._kwn_run + f.height + f.space_after if f.keep_with_next else 0.0
         if f.own_page:
             self._new_page()
 
