@@ -118,7 +118,8 @@ lacks glyphs used by your text. Put extra `.ttf` files in `assets/fonts/` or poi
 
 ## License
 
-No license has been chosen yet, so all rights are reserved by the author until one is added. Third-party components
-(PySide6/Qt, ReportLab, python-docx, Pillow, pyphen, and PyMuPDF – which is AGPL-3.0 or commercially licensed) keep
-their own licenses. Choosing the project's license has to take them into account, in particular PyMuPDF's AGPL, which
-affects anyone who redistributes a build.
+[MIT](LICENSE) © 2026 unupunct.
+
+Third-party components keep their own licenses: PySide6/Qt (LGPL), ReportLab (BSD), python-docx, Pillow, pyphen, and
+PyMuPDF, which is AGPL-3.0 (or commercially licensed). The MIT license covers this project's own code only; anyone who
+redistributes a build that bundles PyMuPDF must also satisfy the AGPL for that component.
