@@ -34,7 +34,7 @@ style of the chosen design. The app is built around that kind of minimal-interve
 
 ## Download
 
-Get the Windows installer from the [latest release](../../releases/latest): run
+Get the Windows installer from the [latest release](https://github.com/unupunct/BookForge-Studio/releases/latest): run
 `BookForgeStudio-Setup-<version>.exe`; it installs to *Program Files* and adds a Start-menu entry. The installer is not
 code-signed, so Windows SmartScreen may ask you to confirm ("More info ▸ Run anyway"). Windows 10/11, 64-bit.
 
