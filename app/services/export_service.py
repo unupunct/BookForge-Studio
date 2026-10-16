@@ -100,6 +100,9 @@ def export_pdf(book: BookProject, dest: Path, profile_key: str = "digital", *,
         raise ExportError(f"'{dest.name}' already exists; choose another name or allow overwriting")
     if not dest.parent.exists():
         raise ExportError(f"The folder '{dest.parent}' does not exist")
+    if profile_key == "screen":  # re-laid out for phones and tablets; the book itself is untouched
+        from .screen_edition import screen_edition
+        book, layout = screen_edition(book), None
     try:
         layout = layout or (engine or LayoutEngine()).build(book, cancel)
     except LayoutCancelled:

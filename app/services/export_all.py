@@ -14,13 +14,14 @@ from .export_service import ExportError, ValidationBlocked, export_other, export
 FORMATS: list[tuple[str, str, str]] = [  # key, label, file name pattern ({b} = base name)
     ("pdf_digital", "Digital PDF", "{b}.pdf"),
     ("pdf_print", "Print PDF (bleed, crop marks)", "{b} (print).pdf"),
+    ("pdf_screen", "Screen PDF (phone / tablet / computer)", "{b} (screen).pdf"),
     ("epub", "EPUB 3 e-book", "{b}.epub"),
     ("docx", "Word manuscript", "{b}.docx"),
     ("html", "HTML", "{b}.html"),
     ("markdown", "Markdown", "{b}.md"),
     ("cover_print", "Print cover artwork (front+back, bleed)", "{b} (cover).pdf"),
 ]
-DEFAULT_KEYS = ["pdf_digital", "pdf_print", "epub", "docx"]
+DEFAULT_KEYS = ["pdf_digital", "pdf_print", "pdf_screen", "epub", "docx"]
 
 
 @dataclass

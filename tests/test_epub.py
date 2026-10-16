@@ -74,7 +74,7 @@ def test_epub_is_structurally_valid_and_complete(tmp_path):
         assert "<strong>bold</strong>" in text and "text-align:center" in text
         assert "a &lt; b &amp;&amp; c &gt; d" in text and "Figura &lt;1&gt;" in text
         assert 'class="signature">— A.' in text and "poem center" in text
-        assert "<ol><li>unu</li>" in text and "<h4>Ingredients</h4>" in text
+        assert "<ol><li>unu</li>" in text and "<h4>Ingrediente</h4>" in text  # book language is ro
         imgs = [n for n in names if n.startswith("OEBPS/images/img")]
         assert len(imgs) == 2 and all(n.endswith((".png", ".jpg")) for n in imgs)  # WebP converted
         nav = read(z, "OEBPS/nav.xhtml")
@@ -92,7 +92,7 @@ def test_poem_index_in_navigation(tmp_path):
     assert check_epub(dest) == []
     with zipfile.ZipFile(dest) as z:
         nav = read(z, "OEBPS/nav.xhtml")
-        assert "Index of poems" in nav and "Seară" in nav and "2. Un singur vers" in nav
+        assert "Index de poezii" in nav and "Seară" in nav and "2. Un singur vers" in nav
 
 
 def test_large_section_is_split_into_files_and_links_resolve(tmp_path):

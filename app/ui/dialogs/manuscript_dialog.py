@@ -14,6 +14,7 @@ from ...services.template_service import TemplateService
 from ...workers.task import run_task
 from .. import theme
 from .import_dialog import ENCODINGS
+from .wizard import LANGUAGES
 
 
 class ManuscriptDialog(QDialog):
@@ -49,6 +50,10 @@ class ManuscriptDialog(QDialog):
         self.title = QLineEdit()
         self.title.setPlaceholderText("From the document, or type one")
         self.author = QLineEdit()
+        self.language = QComboBox()
+        for label, code in LANGUAGES:
+            self.language.addItem(f"{label} ({code})", code)
+        self.language.setToolTip("Language of the book: quotes, hyphenation and generated labels such as (continuare)")
         self.author.setPlaceholderText("From the document, or type one")
         self.poetry = QComboBox()
         self.poetry.addItem("Detect poems automatically", "auto")
@@ -75,6 +80,7 @@ class ManuscriptDialog(QDialog):
         form.addRow("Template", self.template)
         form.addRow("Title", self.title)
         form.addRow("Author", self.author)
+        form.addRow("Language", self.language)
         form.addRow("Poetry", self.poetry)
         form.addRow("Post headers", self.headers)
         form.addRow("Signatures", self.sigs)
@@ -142,6 +148,9 @@ class ManuscriptDialog(QDialog):
             self.title.setText(r.title)
         if r.author and not self.author.text():
             self.author.setText(r.author)
+        i = self.language.findData(r.language) if r.language else -1
+        if i >= 0:
+            self.language.setCurrentIndex(i)
         words = sum(len(b.plain_text().split()) for s in r.sections for b in s.blocks)
         self.report.setPlainText(f"{len(r.sections)} chapter(s), {words:,} words, "
                                  f"{len(staged.assets)} image(s).\n\n" + r.report.text())
@@ -155,5 +164,6 @@ class ManuscriptDialog(QDialog):
 
     def spec(self) -> NewBookSpec:
         return NewBookSpec(title=self.title.text().strip(), author=self.author.text().strip(),
+                           language=self.language.currentData(),
                            profile=self.category.currentData(), template=self.template.currentData(),
                            cover=True, toc=True)

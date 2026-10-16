@@ -18,6 +18,7 @@ from ..domain.content_blocks import (Block, CodeBlock, ExerciseBlock, FootnoteBl
                                      ParagraphBlock, PoetryBlock, QuoteBlock, RecipeBlock,
                                      Run, SceneBreakBlock, TableBlock, plain_runs, runs_text)
 from ..domain.layouts import MM_TO_PT, BookSettings
+from ..i18n import exercise_label, tr
 from ..domain.sections import GENERATED_KINDS, RECTO_KINDS, Section
 from ..domain.styles import ResolvedStyle, StyleSet
 from .hyphenation import get_hyphenator
@@ -369,12 +370,13 @@ def poetry_flows(block: PoetryBlock, ctx: BuildContext) -> list[Flow]:
     leading = style.font_size * style.line_height
     header: list[Atom] = []
     if block.continuation_marker:
+        cont_text = tr("continued", ctx.book.metadata.language)
         face = fonts.face(style.font_family, False, True)
         sz = style.font_size * 0.85
         h = sz * 1.5
-        header = [Atom(h, [Glyphs(x=style.left_indent, y=_baseline(h, sz), text="(continued)",
+        header = [Atom(h, [Glyphs(x=style.left_indent, y=_baseline(h, sz), text=cont_text,
                                   font=face.key, size=sz, color="#666666",
-                                  width=fonts.width("(continued)", face.key, sz),
+                                  width=fonts.width(cont_text, face.key, sz),
                                   block_id=block.id)])]
     f = Flow(block_id=block.id, atoms=atoms, space_before=style.space_before + 6,
              space_after=style.space_after + 12, widow=4 if own_page else 2, orphan=2,
@@ -511,7 +513,7 @@ EXERCISE_LABELS = {"objective": "Learning objective", "definition": "Definition"
 
 def exercise_flow(block: ExerciseBlock, ctx: BuildContext) -> Flow:
     style = ctx.style("callout", block.style)
-    label = EXERCISE_LABELS.get(block.kind, block.kind.title())
+    label = exercise_label(block.kind, ctx.book.metadata.language)
     head = f"{label}: {block.title}" if block.title else label
     runs = [Run(head + ("  " if block.runs else ""), bold=True), *block.runs]
     f = _flow_from_style(text_atoms(runs, style, ctx, block.id), style, ctx, block.id)
@@ -520,17 +522,18 @@ def exercise_flow(block: ExerciseBlock, ctx: BuildContext) -> Flow:
 
 
 def recipe_flows(block: RecipeBlock, ctx: BuildContext) -> list[Flow]:
+    lang = ctx.book.metadata.language
     flows: list[Flow] = []
     if block.title:
         flows.append(title_flow(block.title, "recipe_heading", ctx, block.id,
                                 [f"blk:{block.id}"]))
     meta = []
     if block.prep_time:
-        meta.append(f"Prep: {block.prep_time}")
+        meta.append(f"{tr('prep', lang)}: {block.prep_time}")
     if block.cook_time:
-        meta.append(f"Cook: {block.cook_time}")
+        meta.append(f"{tr('cook', lang)}: {block.cook_time}")
     if block.servings:
-        meta.append(f"Serves: {block.servings}")
+        meta.append(f"{tr('serves', lang)}: {block.servings}")
     body = ctx.style("body")
     body.first_indent = 0
     body.align = "left"
@@ -544,18 +547,18 @@ def recipe_flows(block: RecipeBlock, ctx: BuildContext) -> list[Flow]:
         flows.append(_flow_from_style(text_atoms(plain_runs(block.description), body, ctx,
                                                  block.id), body, ctx, block.id))
     if block.ingredients:
-        flows.append(title_flow("Ingredients", "heading3", ctx, block.id))
+        flows.append(title_flow(tr("ingredients", lang), "heading3", ctx, block.id))
         flows.append(list_flow(ListBlock(ordered=False, items=[plain_runs(i) for i in
                                                                block.ingredients]), ctx, False))
     if block.instructions:
-        flows.append(title_flow("Method", "heading3", ctx, block.id))
+        flows.append(title_flow(tr("method", lang), "heading3", ctx, block.id))
         flows.append(list_flow(ListBlock(ordered=True, items=[plain_runs(i) for i in
                                                               block.instructions]), ctx, False))
     if block.notes:
-        flows.append(_flow_from_style(text_atoms([Run("Notes: ", bold=True), Run(block.notes)],
+        flows.append(_flow_from_style(text_atoms([Run(tr("recipe_notes", lang) + ": ", bold=True), Run(block.notes)],
                                                  body, ctx, block.id), body, ctx, block.id))
     if block.nutrition:
-        flows.append(_flow_from_style(text_atoms([Run("Nutrition (as supplied): ", bold=True),
+        flows.append(_flow_from_style(text_atoms([Run(tr("nutrition", lang) + ": ", bold=True),
                                                   Run(block.nutrition)], body, ctx, block.id),
                                       body, ctx, block.id))
     return flows
@@ -668,7 +671,7 @@ def toc_flows(book: BookProject, ctx: BuildContext, labels: dict[str, str]) -> l
     entries = collect_toc(book)
     poems = poem_entries(book)
     if poems:
-        entries = entries + [TocEntry(0, "Index of poems", "")] + poems
+        entries = entries + [TocEntry(0, tr("poem_index", book.metadata.language), "")] + poems
     settings = book.settings
     flows: list[Flow] = []
     dot_face = fonts.face("serif")
@@ -896,7 +899,12 @@ def section_flows(book: BookProject, ctx: BuildContext, section: Section, depth:
         num = ctx.chapter_numbers.get(section.id)
         if kind == "chapter" and num and s.chapter_number_style != "none":
             n_text = to_roman_upper(num) if s.chapter_number_style == "roman" else str(num)
-            label = title_flow(s.chapter_label.replace("{n}", n_text), "chapter_label", ctx, None)
+            pattern = s.chapter_label
+            lang = book.metadata.language
+            for key, english in (("chapter", "Chapter"), ("part", "Part")):  # built-in labels follow the language
+                if pattern.startswith(english + " "):
+                    pattern = tr(key, lang) + pattern[len(english):]
+            label = title_flow(pattern.replace("{n}", n_text), "chapter_label", ctx, None)
             label.drop = s.chapter_drop if opening else 0.0
             tf.space_before = 2.0
             flows.append(label)

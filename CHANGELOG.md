@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.1 – book language, screen PDF, template gallery
+
+- **Generated text follows the book's language** (`app/i18n.py`): "(continued)" becomes "(continuare)" in
+  Romanian, and Contents, Index of poems, Chapter/Part labels, recipe and exercise labels are translated
+  (en, ro, fr, de, es, it, pt, hu, pl, nl) in the layout, PDF and EPUB.
+- **Language detection on import** (stop-word scoring, offline). The manuscript dialog has a Language box
+  prefilled with the guess; an explicit choice always wins. Detection returns nothing when unsure.
+- **Screen PDF** (phone / tablet / computer): re-laid out on a 108x192 mm single-page format with small margins,
+  no facing pages, gutters, blank leaves or print marks. Part of Export all and the Export dialog.
+- `scripts/make_template_gallery.py` renders every template (cover + two pages) to images and a gallery PDF.
+  Limitation: the cover design is the default one, not template-specific.
+
 ## 0.3.0 – ten improvements
 
 1. **Typography cleanup** (Book menu): Romanian/English/German/French quotes, dashes, ellipses, spacing; counts first,

@@ -48,7 +48,7 @@ class ValidationReport:
                 f"{len([i for i in self.issues if i.severity == 'info'])} note(s)")
 
 
-MIN_DPI = {"digital": (72, 110), "proof": (0, 0), "print": (150, 250)}  # (error below, warn below)
+MIN_DPI = {"digital": (72, 110), "screen": (72, 110), "proof": (0, 0), "print": (150, 250)}  # (error below, warn below)
 
 
 def validate_book(book: BookProject, layout: LayoutResult | None = None,

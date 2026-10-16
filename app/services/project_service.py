@@ -10,6 +10,7 @@ from ..domain.book import BookProject
 from ..domain.content_blocks import ExerciseBlock, HeadingBlock, ParagraphBlock, Run
 from ..domain.layouts import PAGE_SIZES
 from ..domain.sections import Section
+from ..i18n import tr
 from .app_paths import user_data_dir
 from .template_service import TemplateError, TemplateService, apply_template
 
@@ -58,7 +59,7 @@ class NewBookSpec:
     title: str = "Untitled Book"
     subtitle: str = ""
     author: str = ""
-    language: str = "en"
+    language: str = ""  # "" = English, or the language detected in an imported manuscript
     profile: str = "custom"
     output: str = "digital"  # digital | print | both
     page_size: str | None = None  # None -> template default
@@ -74,7 +75,7 @@ def create_project(spec: NewBookSpec, templates: TemplateService | None = None) 
     book = BookProject()
     md = book.metadata
     md.title, md.subtitle, md.author = spec.title.strip() or "Untitled Book", spec.subtitle.strip(), spec.author.strip()
-    md.language, md.category = spec.language, profile.key
+    md.language, md.category = spec.language or "en", profile.key
     try:
         tpl = templates.get(spec.template or profile.template)
         apply_template(book, tpl, preserve_customised_styles=False)
@@ -97,7 +98,7 @@ def create_project(spec: NewBookSpec, templates: TemplateService | None = None) 
         secs.append(Section({"dedication": "Dedication", "preface": "Preface",
                              "foreword": "Foreword"}[k], k, enabled=(k != "dedication")))
     if spec.toc and profile.toc:
-        secs.append(Section("Contents", "toc", in_toc=False))
+        secs.append(Section(tr("contents", md.language), "toc", in_toc=False))
     chapter = Section(profile.chapter_title, "chapter")
     chapter.blocks = _starter_blocks(profile.key)
     secs.append(chapter)
@@ -169,7 +170,10 @@ def create_from_manuscript(spec: NewBookSpec, staged, options, templates: Templa
 
     Title and author are taken from the document when the spec leaves them empty.
     """
+    from dataclasses import replace as _replace
     from .import_service import commit_import
+    if not spec.language and getattr(staged.result, "language", None):
+        spec = _replace(spec, language=staged.result.language)  # follow the manuscript's language
     book = create_project(spec, templates)
     book.sections = [s for s in book.sections if s.kind != "chapter"]  # drop the empty starter chapter
     new_sections = commit_import(book, staged, options)
@@ -185,7 +189,7 @@ def create_from_manuscript(spec: NewBookSpec, staged, options, templates: Templa
         book.settings.poem_index = "titles"
         if not any(s.kind == "toc" for s in book.sections):
             at = next((i for i, s in enumerate(book.sections) if s.kind in ("chapter", "part")), len(book.sections))
-            book.sections.insert(at, Section("Contents", "toc", in_toc=False))
+            book.sections.insert(at, Section(tr("contents", book.metadata.language), "toc", in_toc=False))
     if not any(v.strip() for v in (md.author, md.rights, md.publisher, md.isbn, md.year)):
         for s in book.sections:  # nothing to print: no blank copyright page (enable it once details exist)
             if s.kind == "copyright":

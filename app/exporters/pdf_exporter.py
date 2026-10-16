@@ -38,6 +38,9 @@ PROFILES: dict[str, PdfProfile] = {
     "digital": PdfProfile("digital", "Digital PDF", 0.0, False, 150, 82,
                           description="Screen reading: searchable text, bookmarks and links, "
                                       "moderate file size, no bleed."),
+    "screen": PdfProfile("screen", "Screen PDF", 0.0, False, 150, 82,
+                         description="For phones, tablets and computers: single tall pages with small "
+                                     "margins, no facing pages, blank leaves or print marks."),
     "print": PdfProfile("print", "Print PDF", 3.0, True, 300, 92,
                         description="Trim size plus bleed, optional crop marks and "
                                     "high-resolution images. Not PDF/X certified."),

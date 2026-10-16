@@ -23,7 +23,8 @@ from ..domain.content_blocks import (Block, CodeBlock, ExerciseBlock, FootnoteBl
                                      PoetryBlock, QuoteBlock, RecipeBlock, Run, SceneBreakBlock,
                                      TableBlock, runs_text)
 from ..domain.sections import GENERATED_KINDS, Section
-from ..layout.page_builder import EXERCISE_LABELS, poem_entries
+from ..i18n import exercise_label, tr
+from ..layout.page_builder import poem_entries
 from ..services.image_service import prepare_image
 
 XHTML_NS = "http://www.w3.org/1999/xhtml"
@@ -184,7 +185,9 @@ class _Builder:
         if isinstance(b, RecipeBlock):
             lvl = min(depth + 1, 6)
             parts = [f'<h{lvl} id="blk-{b.id}">{_x(b.title)}</h{lvl}>']
-            meta = [f"{k}: {_x(v)}" for k, v in (("Prep", b.prep_time), ("Cook", b.cook_time), ("Serves", b.servings)) if v]
+            lg = self.md.language
+            meta = [f"{k}: {_x(v)}" for k, v in ((tr("prep", lg), b.prep_time), (tr("cook", lg), b.cook_time),
+                                                  (tr("serves", lg), b.servings)) if v]
             if meta:
                 parts.append(f'<p class="noindent"><em>{" · ".join(meta)}</em></p>')
             if b.image:
@@ -194,16 +197,16 @@ class _Builder:
             if b.description:
                 parts.append(f"<p>{_x(b.description)}</p>")
             if b.ingredients:
-                parts.append("<h4>Ingredients</h4><ul>" + "".join(f"<li>{_x(i)}</li>" for i in b.ingredients) + "</ul>")
+                parts.append(f"<h4>{_x(tr('ingredients', lg))}</h4><ul>" + "".join(f"<li>{_x(i)}</li>" for i in b.ingredients) + "</ul>")
             if b.instructions:
-                parts.append("<h4>Method</h4><ol>" + "".join(f"<li>{_x(i)}</li>" for i in b.instructions) + "</ol>")
+                parts.append(f"<h4>{_x(tr('method', lg))}</h4><ol>" + "".join(f"<li>{_x(i)}</li>" for i in b.instructions) + "</ol>")
             if b.notes:
                 parts.append(f"<p><strong>Notes:</strong> {_x(b.notes)}</p>")
             if b.nutrition:
                 parts.append(f"<p><strong>Nutrition (as supplied):</strong> {_x(b.nutrition)}</p>")
             return "".join(parts)
         if isinstance(b, ExerciseBlock):
-            label = EXERCISE_LABELS.get(b.kind, b.kind.title())
+            label = exercise_label(b.kind, self.md.language)
             head = f"{label}: {b.title}" if b.title else label
             return f'<div class="callout"><p><strong>{_x(head)}</strong> {self.runs(b.runs)}</p></div>'
         if isinstance(b, FootnoteBlock):
@@ -385,7 +388,7 @@ def export_epub(book: BookProject, path: Path) -> list[str]:
         if href:
             poem_nav.append(_Nav(e.title, href))
     if poem_nav:
-        navs.append(_Nav("Index of poems", poem_nav[0].href, poem_nav))
+        navs.append(_Nav(tr("poem_index", md.language), poem_nav[0].href, poem_nav))
 
     uid = "urn:uuid:" + str(uuid.UUID(int=int(hashlib.md5(book.id.encode()).hexdigest(), 16)))
     now = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -412,8 +415,8 @@ def export_epub(book: BookProject, path: Path) -> list[str]:
                  + f'<li><a epub:type="bodymatter" href={_attr(first_text)}>Start</a></li></ol></nav>')
     nav_doc = (f'<?xml version="1.0" encoding="utf-8"?>\n<!DOCTYPE html>\n<html xmlns="{XHTML_NS}" xmlns:epub="{EPUB_NS}" '
                f'lang="{_x(md.language or "en")}" xml:lang="{_x(md.language or "en")}"><head><meta charset="utf-8"/>'
-               f'<title>Contents</title><link rel="stylesheet" type="text/css" href="style.css"/></head><body>'
-               f'<nav epub:type="toc" id="toc"><h1>Contents</h1><ol>{toc_items}</ol></nav>{landmarks}</body></html>')
+               f'<title>{_x(tr("contents", md.language))}</title><link rel="stylesheet" type="text/css" href="style.css"/></head><body>'
+               f'<nav epub:type="toc" id="toc"><h1>{_x(tr("contents", md.language))}</h1><ol>{toc_items}</ol></nav>{landmarks}</body></html>')
     manifest[0].data = nav_doc.encode("utf-8")
 
     counter = [0]

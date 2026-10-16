@@ -19,19 +19,20 @@ def test_all_formats_written_and_valid(tmp_path, sample_book):
     assert all(r.ok for r in res), [r.message for r in res if not r.ok]
     names = sorted(p.name for p in tmp_path.iterdir())
     base = safe_name(sample_book.metadata.title)
-    assert names == sorted([f"{base}.pdf", f"{base} (print).pdf", f"{base}.epub", f"{base}.docx", f"{base}.html",
+    assert names == sorted([f"{base}.pdf", f"{base} (print).pdf", f"{base} (screen).pdf", f"{base}.epub",
+                            f"{base}.docx", f"{base}.html",
                             f"{base}.md", f"{base} (cover).pdf"])
     assert pymupdf.open(str(tmp_path / f"{base}.pdf")).page_count == next(r.pages for r in res if r.key == "pdf_digital")
     assert check_epub(tmp_path / f"{base}.epub") == []
     assert Document(str(tmp_path / f"{base}.docx")).core_properties.title == sample_book.metadata.title
-    assert progress[0] == (0, 7) and progress[-1] == (7, 7)
+    assert progress[0] == (0, 8) and progress[-1] == (8, 8)
     assert not list(tmp_path.glob(".*.tmp"))
 
 
 def test_default_selection_and_unusual_titles(tmp_path, sample_book):
     sample_book.metadata.title = 'Ce? "Titlu": a/b*'
     res = export_all(sample_book, tmp_path)
-    assert [r.key for r in res] == ["pdf_digital", "pdf_print", "epub", "docx"] and all(r.ok for r in res)
+    assert [r.key for r in res] == ["pdf_digital", "pdf_print", "pdf_screen", "epub", "docx"] and all(r.ok for r in res)
     assert {p.suffix for p in tmp_path.iterdir()} == {".pdf", ".epub", ".docx"}
     assert all(not set('<>:"/\\|?*') & set(p.name) for p in tmp_path.iterdir())
 

@@ -80,6 +80,7 @@ class ImportResult:
     author: str | None = None
     subtitle: str | None = None
     description: str | None = None
+    language: str | None = None  # guessed from the text (en, ro, fr, ...), None if unsure
 
 
 # (data, filename) -> asset id, or None when the image is rejected

@@ -3,7 +3,7 @@
 A local-first Windows desktop application that turns manuscripts into professionally formatted books and
 validated PDFs. Everything runs offline; manuscripts and images never leave your computer.
 
-**Status: 0.3.0.** See [docs/limitations.md](docs/limitations.md) for exactly what is
+**Status: 0.3.1.** See [docs/limitations.md](docs/limitations.md) for exactly what is
 and is not implemented.
 
 ## Quick start

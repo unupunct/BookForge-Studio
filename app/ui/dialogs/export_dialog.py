@@ -21,6 +21,7 @@ from ...workers.task import Task, run_task
 from .. import theme
 
 FORMATS = [("Digital PDF", "pdf:digital", ".pdf"), ("Print PDF (bleed, crop marks)", "pdf:print", ".pdf"),
+           ("Screen PDF (phone, tablet, computer)", "pdf:screen", ".pdf"),
            ("Proof PDF (boundaries and diagnostics)", "pdf:proof", ".pdf"),
            ("EPUB 3 (e-readers, reflowable)", "epub", ".epub"),
            ("Word document (editable manuscript)", "docx", ".docx"), ("HTML (single file)", "html", ".html"),

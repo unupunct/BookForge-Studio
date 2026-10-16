@@ -19,6 +19,7 @@ from ..importers.markdown_importer import import_markdown
 from ..importers.pdf_importer import import_pdf
 from ..importers.txt_importer import import_txt
 from ..persistence.project_archive import MAX_SOURCE_SNAPSHOT
+from .language_detect import detect_language
 
 IMPORTERS = {
     ".docx": import_docx, ".txt": import_txt, ".text": import_txt,
@@ -92,6 +93,11 @@ def run_import(path: Path, options: ImportOptions | None = None) -> StagedImport
     holder.append(_Staging(ImportReport()))
     result = importer(path, raw, options, sink)
     holder[0].report = result.report
+    sample = " ".join(b.plain_text() for s in result.sections for b in s.blocks[:300])[:60000]
+    result.language = detect_language(sample)
+    if result.language:
+        result.report.add("info", f"Language of the text detected as '{result.language}' (used for quotes, "
+                                  "hyphenation and generated labels; change it in Book properties)")
     return StagedImport(result, holder[0].assets, raw, path.name)
 
 
