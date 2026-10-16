@@ -36,6 +36,14 @@
     },
     "body": {
       "font_size": 16
+    },
+    "book_title": {
+      "font_family": "Verdana"
     }
+  },
+  "cover": {
+    "preset": "playful",
+    "palette": "sunset",
+    "font": "Verdana"
   }
 }

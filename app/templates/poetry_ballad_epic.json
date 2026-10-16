@@ -49,6 +49,14 @@
       "bold": true,
       "align": "left",
       "space_after": 24
+    },
+    "book_title": {
+      "font_family": "Georgia"
     }
+  },
+  "cover": {
+    "preset": "ornate",
+    "palette": "forest",
+    "font": "Georgia"
   }
 }

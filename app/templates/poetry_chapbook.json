@@ -50,6 +50,14 @@
       "bold": true,
       "align": "left",
       "space_after": 14
+    },
+    "book_title": {
+      "font_family": "Candara"
     }
+  },
+  "cover": {
+    "preset": "split",
+    "palette": "sage",
+    "font": "Candara"
   }
 }

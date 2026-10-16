@@ -32,6 +32,14 @@
     },
     "callout": {
       "background": "#EEF3F8"
+    },
+    "book_title": {
+      "font_family": "Times New Roman"
     }
+  },
+  "cover": {
+    "preset": "grid",
+    "palette": "ocean",
+    "font": "Times New Roman"
   }
 }

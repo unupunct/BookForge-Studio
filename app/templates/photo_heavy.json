@@ -28,6 +28,14 @@
     "caption": {
       "font_family": "Segoe UI",
       "font_size": 8.5
+    },
+    "book_title": {
+      "font_family": "Segoe UI"
     }
+  },
+  "cover": {
+    "preset": "photo",
+    "palette": "midnight_gold",
+    "font": "Segoe UI"
   }
 }

@@ -45,6 +45,14 @@
       "uppercase": true,
       "color": "#5A4A2A",
       "space_after": 6
+    },
+    "book_title": {
+      "font_family": "Constantia"
     }
+  },
+  "cover": {
+    "preset": "stars",
+    "palette": "royal",
+    "font": "Constantia"
   }
 }

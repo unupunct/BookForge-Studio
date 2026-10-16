@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.2 – template covers, live template preview, screen PDF options
+
+- **Every template has its own cover** (19 cover presets x 14 palettes; all 33 templates are distinct). New books get the
+  template's cover; applying a template later replaces the cover only if you have not designed your own.
+  Templates you save remember their cover.
+- **Cover and title page match the interior**: cover text uses the template's heading font, the title page uses the
+  same font and the template's chapter ornament. Cover titles shrink so no word is ever broken in the middle.
+- **Template library preview shows the cover and the first two pages with the text of your own book** (switchable
+  to a sample), laid out by the same engine as the export.
+- **Screen PDF**: phone, tablet or computer (A4) page size, and a dark-pages variant (lightness-flipped ink on a dark
+  page, covers unchanged). Export dialog options; Export all offers all four.
+  Limitation: the dark variant recolours text and shapes, not photographs.
+
 ## 0.3.1 – book language, screen PDF, template gallery
 
 - **Generated text follows the book's language** (`app/i18n.py`): "(continued)" becomes "(continuare)" in

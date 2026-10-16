@@ -31,6 +31,14 @@
       "align": "center",
       "space_before": 80,
       "space_after": 40
+    },
+    "book_title": {
+      "font_family": "Palatino Linotype"
     }
+  },
+  "cover": {
+    "preset": "classic",
+    "palette": "burgundy",
+    "font": "Palatino Linotype"
   }
 }

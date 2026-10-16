@@ -51,6 +51,14 @@
       "bold": false,
       "align": "center",
       "space_after": 30
+    },
+    "book_title": {
+      "font_family": "Cambria"
     }
+  },
+  "cover": {
+    "preset": "poetry",
+    "palette": "sage",
+    "font": "Cambria"
   }
 }

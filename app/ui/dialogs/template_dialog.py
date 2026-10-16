@@ -3,12 +3,13 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import (QDialog, QFileDialog, QHBoxLayout, QInputDialog, QLabel, QListWidget,
+from PySide6.QtWidgets import (QCheckBox, QDialog, QFileDialog, QHBoxLayout, QInputDialog, QLabel, QListWidget,
                                QListWidgetItem, QMessageBox, QPushButton, QVBoxLayout)
 
 from ...application_state import AppState
+from ...layout.model import Glyphs
 from ...layout.pagination import LayoutEngine
-from ...services.template_service import (TemplateError, apply_template, sample_book,
+from ...services.template_service import (TemplateError, apply_template, preview_book,
                                           template_from_book)
 from .. import theme
 from ..preview.page_renderer import render_page
@@ -20,7 +21,7 @@ class TemplateDialog(QDialog):
         self.state = state
         self.svc = state.templates
         self.setWindowTitle("Template library")
-        self.resize(760, 560)
+        self.resize(1040, 600)
         lay = QHBoxLayout(self)
         left = QVBoxLayout()
         self.list = QListWidget()
@@ -30,11 +31,20 @@ class TemplateDialog(QDialog):
         self.desc.setWordWrap(True)
         theme.set_muted(self.desc)
         left.addWidget(self.desc)
-        self.preview = QLabel(alignment=Qt.AlignCenter)
-        self.preview.setMinimumSize(300, 420)
-        self.preview.setAccessibleName("Template preview")
+        self.pages = [QLabel(alignment=Qt.AlignCenter) for _ in range(3)]
+        for lbl, name in zip(self.pages, ("Cover", "Opening page", "Next page")):
+            lbl.setMinimumSize(190, 300)
+            lbl.setAccessibleName(f"Template preview: {name}")
+        self.preview = self.pages[1]  # shown text for errors
+        self.use_mine = QCheckBox("Preview with the text of this book")
+        self.use_mine.setChecked(True)
+        self.use_mine.toggled.connect(self._show)
         right = QVBoxLayout()
-        right.addWidget(self.preview, 1)
+        row = QHBoxLayout()
+        for lbl in self.pages:
+            row.addWidget(lbl, 1)
+        right.addLayout(row, 1)
+        right.addWidget(self.use_mine)
         btns = QVBoxLayout()
         self.apply_btn = QPushButton("Apply to this book")
         theme.accent_button(self.apply_btn)
@@ -93,22 +103,33 @@ class TemplateDialog(QDialog):
         self.reset_btn.setEnabled(builtin_override and user_file)
         self.del_btn.setEnabled(user_file and not builtin_override)
         try:
-            book = sample_book(t)
-            res = LayoutEngine().build(book)
-            page = res.pages[0]
-            scale = 400.0 / page.height
-            img = render_page(page, book.assets, scale)
-            self.preview.setPixmap(QPixmap.fromImage(img))
+            self._render(t)
         except Exception as e:  # a broken template must not break the dialog
+            for lbl in self.pages:
+                lbl.clear()
             self.preview.setText(f"Preview unavailable:\n{e}")
+
+    def _render(self, t: dict) -> None:
+        """Cover plus the first two text pages, laid out exactly as the book would be."""
+        source = self.state.project if self.use_mine.isChecked() else None
+        book = preview_book(t, source)
+        res = LayoutEngine().build(book)
+        text_pages = [p for p in res.pages[1:] if any(isinstance(i, Glyphs) for i in p.items)]
+        shown = [res.pages[0]] + text_pages[1:3]  # text_pages[0] is the title page; the chapter follows it
+        for lbl, page in zip(self.pages, shown + [None] * 3):
+            if page is None:
+                lbl.clear()
+                continue
+            img = render_page(page, book.assets, 320.0 / page.height)
+            lbl.setPixmap(QPixmap.fromImage(img))
 
     def _apply(self) -> None:
         key = self._key()
         if not key:
             return
         tpl = self.svc.get(key)
-        if QMessageBox.question(self, "Apply template", f"Apply '{tpl['name']}'? Customised styles are kept. "
-                                "You can undo with Ctrl+Z.") == QMessageBox.Yes:
+        if QMessageBox.question(self, "Apply template", f"Apply '{tpl['name']}'? Customised styles are kept, and so is a cover "
+                                "you designed yourself. You can undo with Ctrl+Z.") == QMessageBox.Yes:
             self.state.edit("Apply template", lambda p: apply_template(p, tpl), kind="settings")
             self.accept()
 

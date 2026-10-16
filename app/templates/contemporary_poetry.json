@@ -39,6 +39,14 @@
       "font_family": "Segoe UI",
       "bold": true,
       "left_indent": 0
+    },
+    "book_title": {
+      "font_family": "Segoe UI"
     }
+  },
+  "cover": {
+    "preset": "minimal",
+    "palette": "sand",
+    "font": "Segoe UI"
   }
 }

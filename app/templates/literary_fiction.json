@@ -46,6 +46,14 @@
       "uppercase": true,
       "color": "#444444",
       "space_after": 8
+    },
+    "book_title": {
+      "font_family": "Palatino Linotype"
     }
+  },
+  "cover": {
+    "preset": "minimal",
+    "palette": "ivory_ink",
+    "font": "Palatino Linotype"
   }
 }

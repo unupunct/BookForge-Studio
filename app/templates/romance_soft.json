@@ -47,6 +47,14 @@
       "align": "center",
       "color": "#7A2E4A",
       "space_after": 4
+    },
+    "book_title": {
+      "font_family": "Cambria"
     }
+  },
+  "cover": {
+    "preset": "ornate",
+    "palette": "rose",
+    "font": "Cambria"
   }
 }

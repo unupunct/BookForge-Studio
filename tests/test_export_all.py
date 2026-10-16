@@ -19,13 +19,14 @@ def test_all_formats_written_and_valid(tmp_path, sample_book):
     assert all(r.ok for r in res), [r.message for r in res if not r.ok]
     names = sorted(p.name for p in tmp_path.iterdir())
     base = safe_name(sample_book.metadata.title)
-    assert names == sorted([f"{base}.pdf", f"{base} (print).pdf", f"{base} (screen).pdf", f"{base}.epub",
+    assert names == sorted([f"{base}.pdf", f"{base} (print).pdf", f"{base} (screen).pdf", f"{base} (tablet).pdf",
+                            f"{base} (computer).pdf", f"{base} (screen dark).pdf", f"{base}.epub",
                             f"{base}.docx", f"{base}.html",
                             f"{base}.md", f"{base} (cover).pdf"])
     assert pymupdf.open(str(tmp_path / f"{base}.pdf")).page_count == next(r.pages for r in res if r.key == "pdf_digital")
     assert check_epub(tmp_path / f"{base}.epub") == []
     assert Document(str(tmp_path / f"{base}.docx")).core_properties.title == sample_book.metadata.title
-    assert progress[0] == (0, 8) and progress[-1] == (8, 8)
+    assert progress[0] == (0, 11) and progress[-1] == (11, 11)
     assert not list(tmp_path.glob(".*.tmp"))
 
 

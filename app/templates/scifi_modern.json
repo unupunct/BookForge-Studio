@@ -47,6 +47,14 @@
       "bold": true,
       "color": "#3C7DD9",
       "space_after": 4
+    },
+    "book_title": {
+      "font_family": "Corbel"
     }
+  },
+  "cover": {
+    "preset": "triangles",
+    "palette": "ocean",
+    "font": "Corbel"
   }
 }

@@ -54,6 +54,14 @@
       "uppercase": true,
       "align": "left",
       "space_after": 22
+    },
+    "book_title": {
+      "font_family": "Verdana"
     }
+  },
+  "cover": {
+    "preset": "stack",
+    "palette": "coral",
+    "font": "Verdana"
   }
 }

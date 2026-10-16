@@ -44,7 +44,13 @@ def _text_items(book: BookProject, L: CoverLayer, W: float, H: float) -> list[It
 
     lines, lead = lay(size)
     if L.autofit:
-        while len(lines) * lead > box_h and size > 6:
+        face = fonts.face(L.font_family, bold=L.bold)
+        words = [w.upper() if L.uppercase else w for w in text.split()]
+
+        def too_wide(sz: float) -> bool:  # a single word wider than the box would be broken mid-word
+            return any(fonts.width(w, face.key, sz) > box_w for w in words)
+
+        while (len(lines) * lead > box_h or too_wide(size)) and size > 6:
             size *= 0.93
             lines, lead = lay(size)
     total = len(lines) * lead

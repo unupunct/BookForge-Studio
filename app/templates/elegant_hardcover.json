@@ -47,6 +47,14 @@
       "uppercase": true,
       "color": "#666666",
       "space_after": 8
+    },
+    "book_title": {
+      "font_family": "Georgia"
     }
+  },
+  "cover": {
+    "preset": "ornate",
+    "palette": "midnight_gold",
+    "font": "Georgia"
   }
 }

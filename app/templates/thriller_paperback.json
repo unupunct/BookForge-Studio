@@ -47,6 +47,14 @@
       "align": "left",
       "color": "#8B1E1E",
       "space_after": 2
+    },
+    "book_title": {
+      "font_family": "Segoe UI"
     }
+  },
+  "cover": {
+    "preset": "stack",
+    "palette": "noir",
+    "font": "Segoe UI"
   }
 }

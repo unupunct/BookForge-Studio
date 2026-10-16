@@ -13,6 +13,7 @@ from ..domain.layouts import Margins
 from ..domain.sections import Section
 from ..domain.styles import merge_template_styles
 from .app_paths import builtin_templates_dir, user_templates_dir
+from .cover_presets import apply_template_cover
 
 # Settings a template may control. Cover, export profile and metadata are never touched.
 TEMPLATE_SETTING_KEYS = {
@@ -131,9 +132,16 @@ class TemplateService:
 
 def apply_template(book: BookProject, template: dict[str, Any],
                    preserve_customised_styles: bool = True,
-                   apply_page_setup: bool = True) -> list[str]:
-    """Apply a template to a book. Returns the names of styles that were kept as customised."""
+                   apply_page_setup: bool = True, apply_cover: bool | None = None) -> list[str]:
+    """Apply a template to a book. Returns the names of styles that were kept as customised.
+
+    The template's cover design replaces the book's cover when `apply_cover` is True, or (None) when the
+    cover was never designed or still is the untouched cover of the previous template.
+    """
     settings = book.settings
+    cv = settings.cover
+    if apply_cover is None:
+        apply_cover = not cv.front_layers or (bool(cv.from_template) and cv.from_template == settings.template)
     for k, v in template.get("settings", {}).items():
         if k not in TEMPLATE_SETTING_KEYS:
             continue
@@ -144,6 +152,8 @@ def apply_template(book: BookProject, template: dict[str, Any],
             v = Margins.from_dict(v)
         setattr(settings, k, v)
     settings.template = template["key"]
+    if apply_cover and template.get("cover"):
+        apply_template_cover(book, template)
     kept = [n for n in template.get("styles", {})
             if book.styles.get(n) and book.styles[n].user_modified and preserve_customised_styles]
     book.styles = merge_template_styles(book.styles, template.get("styles", {}),
@@ -173,5 +183,41 @@ def template_from_book(book: BookProject, name: str, key: str) -> dict[str, Any]
     settings = {k: v for k, v in s.items() if k in TEMPLATE_SETTING_KEYS}
     styles = {n: {k: v for k, v in st.to_dict().items() if k not in ("name", "user_modified")}
               for n, st in book.styles.items() if st.user_modified}
-    return {"key": key, "name": name, "description": f"Saved from '{book.metadata.title}'",
-            "builtin": False, "version": 1, "settings": settings, "styles": styles}
+    t = {"key": key, "name": name, "description": f"Saved from '{book.metadata.title}'",
+         "builtin": False, "version": 1, "settings": settings, "styles": styles}
+    cv = book.settings.cover
+    if cv.preset:
+        t["cover"] = {"preset": cv.preset, "palette": cv.palette, "font": cv.font_family}
+    return t
+
+
+def preview_book(template: dict[str, Any], source: BookProject | None = None, max_blocks: int = 8) -> BookProject:
+    """A short book showing `template` with the user's own text (or a sample when there is none).
+
+    Contains the cover, the title page and the first part of the first chapter. The source is not modified.
+    """
+    from copy import deepcopy
+    from ..domain.content_blocks import HeadingBlock as _H
+    book = BookProject()
+    if source is None:
+        base = sample_book(template)
+        book.metadata = base.metadata
+        text_sections = base.sections
+    else:
+        book.metadata = deepcopy(source.metadata)
+        book.assets = source.assets  # shared read-only (cover photo)
+        book.settings.cover = deepcopy(source.settings.cover)
+        text_sections = []
+        for s in source.walk():
+            if s.kind in ("chapter", "part", "section") and s.blocks:
+                text_sections.append(s)
+                break
+    apply_template(book, template, preserve_customised_styles=False, apply_cover=True)
+    chapter = Section("", "chapter")
+    first = text_sections[0] if text_sections else None
+    chapter.title = first.title if first else "Chapter"
+    blocks = deepcopy(first.blocks[:max_blocks]) if first else []
+    chapter.blocks = blocks or [ParagraphBlock(runs=[Run("Text")])]
+    book.sections = [Section("Front cover", "front_cover", in_toc=False),
+                     Section("Title page", "title_page", in_toc=False, show_title=False), chapter]
+    return book

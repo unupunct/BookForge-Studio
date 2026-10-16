@@ -14,7 +14,10 @@ from .export_service import ExportError, ValidationBlocked, export_other, export
 FORMATS: list[tuple[str, str, str]] = [  # key, label, file name pattern ({b} = base name)
     ("pdf_digital", "Digital PDF", "{b}.pdf"),
     ("pdf_print", "Print PDF (bleed, crop marks)", "{b} (print).pdf"),
-    ("pdf_screen", "Screen PDF (phone / tablet / computer)", "{b} (screen).pdf"),
+    ("pdf_screen", "Screen PDF - phone", "{b} (screen).pdf"),
+    ("pdf_screen_tablet", "Screen PDF - tablet", "{b} (tablet).pdf"),
+    ("pdf_screen_computer", "Screen PDF - computer (A4 page)", "{b} (computer).pdf"),
+    ("pdf_screen_dark", "Screen PDF - phone, dark pages", "{b} (screen dark).pdf"),
     ("epub", "EPUB 3 e-book", "{b}.epub"),
     ("docx", "Word manuscript", "{b}.docx"),
     ("html", "HTML", "{b}.html"),
@@ -22,6 +25,9 @@ FORMATS: list[tuple[str, str, str]] = [  # key, label, file name pattern ({b} = 
     ("cover_print", "Print cover artwork (front+back, bleed)", "{b} (cover).pdf"),
 ]
 DEFAULT_KEYS = ["pdf_digital", "pdf_print", "pdf_screen", "epub", "docx"]
+# screen PDFs: key -> (screen size, dark pages); each is laid out again for its own page format
+SCREEN_VARIANTS = {"pdf_screen": ("phone", False), "pdf_screen_tablet": ("tablet", False),
+                   "pdf_screen_computer": ("computer", False), "pdf_screen_dark": ("phone", True)}
 
 
 @dataclass
@@ -50,7 +56,7 @@ def export_all(book: BookProject, folder: Path, base: str | None = None, keys: l
     keys = keys or DEFAULT_KEYS
     chosen = [f for f in FORMATS if f[0] in keys]
     layout = None
-    if any(k.startswith("pdf") or k == "cover_print" for k, _, _ in chosen):
+    if any(k in ("pdf_digital", "pdf_print", "pdf_proof", "cover_print") for k, _, _ in chosen):
         layout = LayoutEngine().build(book, cancel)
     results: list[ExportAllItem] = []
     for n, (key, label, pattern) in enumerate(chosen):
@@ -61,7 +67,12 @@ def export_all(book: BookProject, folder: Path, base: str | None = None, keys: l
             progress(n, len(chosen), label)
         dest = folder / pattern.format(b=base)
         try:
-            if key.startswith("pdf"):
+            if key in SCREEN_VARIANTS:
+                size, dark = SCREEN_VARIANTS[key]
+                r = export_pdf(book, dest, "screen", overwrite=overwrite, allow_errors=allow_errors, cancel=cancel,
+                               screen_size=size, screen_dark=dark)
+                results.append(ExportAllItem(key, label, dest, True, r.summary(), r.pages))
+            elif key.startswith("pdf"):
                 r = export_pdf(book, dest, key[4:], overwrite=overwrite, allow_errors=allow_errors, layout=layout,
                                cancel=cancel)
                 results.append(ExportAllItem(key, label, dest, True, r.summary(), r.pages))

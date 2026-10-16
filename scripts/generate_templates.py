@@ -332,9 +332,40 @@ POETRY = [
 TEMPLATES.extend(NOVELS)
 TEMPLATES.extend(POETRY)
 
+# Cover design per template: (preset, palette). Presets and palettes live in app/services/cover_presets.py.
+COVERS = {
+    "academic_textbook": ("grid", "ocean"), "biography": ("ornate", "ivory_ink"),
+    "business_nonfiction": ("modern", "slate_orange"), "classic_novel": ("classic", "burgundy"),
+    "contemporary_poetry": ("minimal", "sand"), "cookbook": ("band", "coral"),
+    "crime_noir": ("ribbon", "noir"), "elegant_hardcover": ("ornate", "midnight_gold"),
+    "fantasy_epic": ("stars", "royal"), "general_purpose": ("classic", "midnight_gold"),
+    "historical_saga": ("vintage", "sand"), "illustrated_children": ("playful", "sunset"),
+    "it_documentation": ("grid", "slate_orange"), "literary_fiction": ("minimal", "ivory_ink"),
+    "massmarket_classic": ("stack", "burgundy"), "minimalist_poetry": ("poetry", "sand"),
+    "modern_novel": ("modern", "forest"), "photo_heavy": ("photo", "midnight_gold"),
+    "poetry_anthology": ("classic", "forest"), "poetry_ballad_epic": ("ornate", "forest"),
+    "poetry_chapbook": ("split", "sage"), "poetry_classic_sonnets": ("classic", "ivory_ink"),
+    "poetry_free_verse": ("split", "slate_orange"), "poetry_haiku_pages": ("minimal", "sky"),
+    "poetry_love": ("horizon", "rose"), "poetry_nature": ("horizon", "forest"),
+    "poetry_quiet_verse": ("poetry", "sage"), "poetry_spoken_word": ("stack", "coral"),
+    "romance_soft": ("ornate", "rose"), "scifi_modern": ("triangles", "ocean"),
+    "technical_handbook": ("grid", "noir"), "thriller_paperback": ("stack", "noir"),
+    "young_adult": ("geometric", "coral"),
+}
+
+
+def finish(t: dict) -> dict:
+    """Cover and title typography follow the template's own heading font."""
+    font = t["styles"].get("chapter_title", {}).get("font_family") or t["settings"]["body_font"]
+    t["styles"].setdefault("book_title", {"font_family": font})
+    preset, palette = COVERS.get(t["key"], ("classic", "midnight_gold"))
+    t["cover"] = {"preset": preset, "palette": palette, "font": font}
+    return t
+
+
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
-    for t in TEMPLATES:
+    for t in map(finish, TEMPLATES):
         (OUT / f"{t['key']}.json").write_text(json.dumps(t, indent=2, ensure_ascii=False),
                                               encoding="utf-8")
     print(f"wrote {len(TEMPLATES)} templates to {OUT}")

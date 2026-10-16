@@ -114,6 +114,8 @@ class CoverDesign:
     spine_color: str | None = None  # None -> same as the front background
     spine_text: bool = True  # title and author printed along the spine of a wrap-around cover
     preset: str = ""
+    palette: str = ""
+    from_template: str = ""  # template that generated this cover; a later template may replace it only if unchanged
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {}

@@ -46,6 +46,14 @@
       "align": "left",
       "color": "#C97B3C",
       "space_after": 0
+    },
+    "book_title": {
+      "font_family": "Candara"
     }
+  },
+  "cover": {
+    "preset": "geometric",
+    "palette": "coral",
+    "font": "Candara"
   }
 }

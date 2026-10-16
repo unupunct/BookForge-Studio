@@ -78,7 +78,7 @@ def create_project(spec: NewBookSpec, templates: TemplateService | None = None) 
     md.language, md.category = spec.language or "en", profile.key
     try:
         tpl = templates.get(spec.template or profile.template)
-        apply_template(book, tpl, preserve_customised_styles=False)
+        apply_template(book, tpl, preserve_customised_styles=False, apply_cover=True)
     except TemplateError:
         pass  # fall back to model defaults rather than blocking project creation
     if spec.page_size and spec.page_size in PAGE_SIZES:

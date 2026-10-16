@@ -40,6 +40,14 @@
     "poetry_title": {
       "italic": true,
       "bold": false
+    },
+    "book_title": {
+      "font_family": "Cambria"
     }
+  },
+  "cover": {
+    "preset": "poetry",
+    "palette": "sand",
+    "font": "Cambria"
   }
 }

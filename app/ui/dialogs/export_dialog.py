@@ -18,6 +18,7 @@ from ...layout.pagination import LayoutEngine
 from ...services.export_service import (ExportError, ExportResult, export_other, export_pdf)
 from ...services.validation_service import ValidationReport, validate_book
 from ...workers.task import Task, run_task
+from ...services.screen_edition import SIZES as SCREEN_SIZES
 from .. import theme
 
 FORMATS = [("Digital PDF", "pdf:digital", ".pdf"), ("Print PDF (bleed, crop marks)", "pdf:print", ".pdf"),
@@ -66,12 +67,18 @@ class ExportDialog(QDialog):
         self.desc.setWordWrap(True)
         theme.set_muted(self.desc)
         self.overwrite = QCheckBox("Replace the file if it already exists")
+        self.screen_size = QComboBox()
+        for k, sz in SCREEN_SIZES.items():
+            self.screen_size.addItem(f"{sz.label} - {sz.width_mm:g} x {sz.height_mm:g} mm", k)
+        self.screen_dark = QCheckBox("Dark pages (light text on dark, for night reading)")
         form.addRow("Format", self.format)
         form.addRow("", self.desc)
         form.addRow("File", row)
         form.addRow("", self.overwrite)
         form.addRow("Bleed", self.bleed)
         form.addRow("", self.crop)
+        form.addRow("Screen size", self.screen_size)
+        form.addRow("", self.screen_dark)
         lay.addLayout(form)
         self.issues = QTreeWidget()
         self.issues.setHeaderLabels(["Severity", "Issue"])
@@ -116,6 +123,8 @@ class ExportDialog(QDialog):
         is_print = key == "pdf:print"
         self.bleed.setEnabled(is_print)
         self.crop.setEnabled(is_print)
+        self.screen_size.setEnabled(key == "pdf:screen")
+        self.screen_dark.setEnabled(key == "pdf:screen")
         if key.startswith("pdf:"):
             self.desc.setText(PROFILES[key[4:]].description)
         else:
@@ -224,6 +233,7 @@ class ExportDialog(QDialog):
         book, dest, layout = self._book, self._dest, self._layout
         overwrite = self.overwrite.isChecked()
         bleed, crop = self.bleed.value(), self.crop.isChecked()
+        screen_size, screen_dark = self.screen_size.currentData(), self.screen_dark.isChecked()
 
         def work(ctx):
             if key.startswith("pdf:"):
@@ -232,7 +242,8 @@ class ExportDialog(QDialog):
                 return export_pdf(book, dest, key[4:], overwrite=overwrite, allow_errors=True,
                                   layout=layout, bleed_mm=bleed if key == "pdf:print" else None,
                                   crop_marks=crop if key == "pdf:print" else None,
-                                  progress=prog, cancel=ctx.cancelled)
+                                  progress=prog, cancel=ctx.cancelled,
+                                  screen_size=screen_size, screen_dark=screen_dark)
             return export_other(book, dest, key, overwrite=overwrite)
 
         self._task = run_task(work, self._exported, self._failed,

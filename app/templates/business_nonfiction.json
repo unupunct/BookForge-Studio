@@ -32,6 +32,14 @@
     "heading1": {
       "font_family": "Calibri",
       "color": "#C97B3C"
+    },
+    "book_title": {
+      "font_family": "Calibri"
     }
+  },
+  "cover": {
+    "preset": "modern",
+    "palette": "slate_orange",
+    "font": "Calibri"
   }
 }

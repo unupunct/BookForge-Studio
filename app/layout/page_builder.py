@@ -730,6 +730,11 @@ def title_page_flows(book: BookProject, ctx: BuildContext) -> list[Flow]:
             if style == "author":
                 f.space_before = 40
             flows.append(f)
+            if style == "book_title":  # the template's chapter ornament also marks the title page
+                orn = _ornament_flow(book.settings.chapter_ornament, ctx)
+                if orn is not None:
+                    orn.space_before, orn.keep_with_next = 6, False
+                    flows.append(orn)
     return flows
 
 

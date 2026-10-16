@@ -27,6 +27,14 @@
       "font_family": "Georgia",
       "font_size": 24,
       "space_before": 80
+    },
+    "book_title": {
+      "font_family": "Georgia"
     }
+  },
+  "cover": {
+    "preset": "ornate",
+    "palette": "ivory_ink",
+    "font": "Georgia"
   }
 }

@@ -21,5 +21,14 @@
     "first_line_indent": 14,
     "justify": true
   },
-  "styles": {}
+  "styles": {
+    "book_title": {
+      "font_family": "Georgia"
+    }
+  },
+  "cover": {
+    "preset": "classic",
+    "palette": "midnight_gold",
+    "font": "Georgia"
+  }
 }

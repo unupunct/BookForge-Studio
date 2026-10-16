@@ -57,6 +57,14 @@
       "align": "center",
       "color": "#8A3B4A",
       "space_after": 20
+    },
+    "book_title": {
+      "font_family": "Georgia"
     }
+  },
+  "cover": {
+    "preset": "horizon",
+    "palette": "rose",
+    "font": "Georgia"
   }
 }

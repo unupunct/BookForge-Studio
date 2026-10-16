@@ -51,6 +51,14 @@
       "font_size": 15,
       "align": "center",
       "space_after": 20
+    },
+    "book_title": {
+      "font_family": "Cambria"
     }
+  },
+  "cover": {
+    "preset": "minimal",
+    "palette": "sky",
+    "font": "Cambria"
   }
 }

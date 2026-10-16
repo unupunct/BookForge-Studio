@@ -93,7 +93,8 @@ def export_pdf(book: BookProject, dest: Path, profile_key: str = "digital", *,
                layout: LayoutResult | None = None, engine: LayoutEngine | None = None,
                bleed_mm: float | None = None, crop_marks: bool | None = None,
                progress: Callable[[int, int], None] | None = None,
-               cancel: Callable[[], bool] | None = None) -> ExportResult:
+               cancel: Callable[[], bool] | None = None,
+               screen_size: str = "phone", screen_dark: bool = False) -> ExportResult:
     dest = Path(dest)
     profile: PdfProfile = PROFILES[profile_key]
     if dest.exists() and not overwrite:
@@ -101,10 +102,12 @@ def export_pdf(book: BookProject, dest: Path, profile_key: str = "digital", *,
     if not dest.parent.exists():
         raise ExportError(f"The folder '{dest.parent}' does not exist")
     if profile_key == "screen":  # re-laid out for phones and tablets; the book itself is untouched
-        from .screen_edition import screen_edition
-        book, layout = screen_edition(book), None
+        from .screen_edition import night_layout, screen_edition
+        book, layout = screen_edition(book, screen_size), None
     try:
         layout = layout or (engine or LayoutEngine()).build(book, cancel)
+        if profile_key == "screen" and screen_dark:
+            layout = night_layout(layout)
     except LayoutCancelled:
         raise ExportError("Export cancelled; no file was written") from None
     report = validate_book(book, layout, profile_key)

@@ -43,6 +43,14 @@
     },
     "code": {
       "font_size": 8.5
+    },
+    "book_title": {
+      "font_family": "Segoe UI"
     }
+  },
+  "cover": {
+    "preset": "grid",
+    "palette": "noir",
+    "font": "Segoe UI"
   }
 }

@@ -38,6 +38,14 @@
     "code": {
       "font_size": 8.5,
       "background": "#EFEFEF"
+    },
+    "book_title": {
+      "font_family": "Calibri"
     }
+  },
+  "cover": {
+    "preset": "grid",
+    "palette": "slate_orange",
+    "font": "Calibri"
   }
 }

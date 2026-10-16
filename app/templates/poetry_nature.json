@@ -54,6 +54,14 @@
       "align": "center",
       "color": "#3E5C45",
       "space_after": 18
+    },
+    "book_title": {
+      "font_family": "Constantia"
     }
+  },
+  "cover": {
+    "preset": "horizon",
+    "palette": "forest",
+    "font": "Constantia"
   }
 }

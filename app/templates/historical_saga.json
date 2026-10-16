@@ -45,6 +45,14 @@
       "uppercase": true,
       "color": "#555555",
       "space_after": 6
+    },
+    "book_title": {
+      "font_family": "Times New Roman"
     }
+  },
+  "cover": {
+    "preset": "vintage",
+    "palette": "sand",
+    "font": "Times New Roman"
   }
 }

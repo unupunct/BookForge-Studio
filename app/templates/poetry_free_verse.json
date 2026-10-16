@@ -49,6 +49,14 @@
       "bold": true,
       "align": "left",
       "space_after": 24
+    },
+    "book_title": {
+      "font_family": "Segoe UI"
     }
+  },
+  "cover": {
+    "preset": "split",
+    "palette": "slate_orange",
+    "font": "Segoe UI"
   }
 }

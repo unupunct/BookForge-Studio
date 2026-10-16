@@ -34,6 +34,14 @@
     "header_footer": {
       "font_family": "Segoe UI",
       "font_size": 8
+    },
+    "book_title": {
+      "font_family": "Segoe UI"
     }
+  },
+  "cover": {
+    "preset": "modern",
+    "palette": "forest",
+    "font": "Segoe UI"
   }
 }
