@@ -1,4 +1,4 @@
-# Known limitations and remaining scope (0.2.0)
+# Known limitations and remaining scope (0.4.0)
 
 Honest list of what is **not** implemented or only partly implemented. Nothing here is hidden behind a button.
 
@@ -10,8 +10,8 @@ Honest list of what is **not** implemented or only partly implemented. Nothing h
   the end of a chapter; DOCX imports collect them into a "Notes" section). No per-page footnote reservation.
 * **Automatic generation** of index, bibliography, list of figures/tables, figure numbering and cross-references.
   Bibliography/Index/Glossary sections exist and are edited manually (nothing is fabricated).
-* **Kerning pairs beyond the font's own metrics, drop caps, text wrapping around images, text
-  overlays on images, free-positioned (fixed-layout) elements, page backgrounds other than covers.
+* **Kerning pairs beyond the font's own metrics, drop caps, page backgrounds other than covers and designed
+  photo pages. Text does not flow around *pinned* items (see below); wrapping works for floated images only.
 * **Poetry:** one-poem-per-page and "(continued)" markers exist; separation pages between poems do not.
 * **Interface localisation.** The UI is English; strings are not yet routed through `tr()`. The document engine is
   Unicode throughout and tested with Romanian diacritics.
@@ -64,3 +64,29 @@ Honest list of what is **not** implemented or only partly implemented. Nothing h
   but the preview updates after that.
 * Tested on Windows 11 with Python 3.13 and PySide6 6.12. Other Windows versions and a clean-machine install of the
   built `.exe` have not been tested.
+
+## Page layouts (0.4.0)
+
+* **Columns** (1-4 per section): the section title spans the page and the text below it runs in columns. Columns are
+  filled one after the other, not balanced, so the last page of a section may end with a short second column.
+  Generated pages (contents, title page, copyright, covers) are always single-column. Images and tables take the
+  width of one column; nothing spans several columns. In a very narrow column (three or four columns on a small
+  page) the "(continued)" marker of a poem can be wider than the column.
+* **Per-section page size and margins** are honoured by the PDF, the preview and the layout checks. A change of size
+  or margins always starts a new page. EPUB, HTML and Markdown are reflowable and ignore them; DOCX uses the book's
+  page size. The *screen* PDF ignores them on purpose (every page of a screen edition has the same format). Blank
+  pages inserted for facing pages or for a page-count multiple take the size of the page before them.
+* **Floated images** (text wraps beside them) wrap the paragraphs that directly follow the image; a heading, list
+  or other block ends the wrapping. The image, its caption and the lines beside it are kept together on one page and
+  an image is limited to 60 % of the text height. Text beside the image is not hyphenated differently from the rest.
+* **Pinned images and text boxes** sit at an exact place on the page where the block stands and take no room in the
+  text flow: text is not pushed away, so overlap is yours to avoid. Drawing order follows block order (a block placed
+  earlier is drawn underneath). Text boxes hold plain text in one font and size (shrunk to fit if "shrink" is on).
+  In reflowable formats a pinned image becomes an ordinary image and a text box becomes paragraphs.
+* **Designed pages** (photo page with overlay, image beside text, image over text, quote page) use plain text that
+  shrinks (down to 6 pt, then a warning) to fit its area. A full-page photo is unnumbered and has no margins; it does
+  not count as a numbered page. In DOCX these pages become an image followed by their text.
+* **Preview editing** moves and resizes pinned images and text boxes (corner handle, arrow keys nudge, Esc deselects).
+  Rotation, opacity and exact numbers are set in the block's dialog (double-click its line in the editor). Flowing text
+  and floated images cannot be dragged: their position follows from the text.
+* **Search/replace and Typography cleanup** do not look inside text boxes or designed pages.

@@ -9,8 +9,9 @@ from docx.enum.text import WD_BREAK
 from docx.shared import Inches, Mm, Pt
 
 from ..domain.book import BookProject
+from ..domain.content_blocks import TextBoxBlock
 from ..domain.content_blocks import (Block, CodeBlock, ExerciseBlock, FootnoteBlock, HeadingBlock,
-                                     ImageBlock, ListBlock, PageBreakBlock, ParagraphBlock,
+                                     ImageBlock, LayoutBlock, ListBlock, PageBreakBlock, ParagraphBlock,
                                      PoetryBlock, QuoteBlock, RecipeBlock, Run, SceneBreakBlock,
                                      TableBlock, runs_text)
 from ..domain.sections import GENERATED_KINDS, Section
@@ -95,6 +96,19 @@ def export_docx(book: BookProject, path: Path) -> list[str]:
                 run = p.add_run(line)
                 if i < len(b.text.split("\n")) - 1:
                     run.add_break()
+        elif isinstance(b, TextBoxBlock):
+            for t in b.text.split("\n\n"):
+                if t.strip():
+                    doc.add_paragraph(t)
+            notes.append("Text boxes are exported as ordinary paragraphs in the DOCX")
+        elif isinstance(b, LayoutBlock):
+            block(ImageBlock(asset=b.asset, alt=b.headline, width_pct=100)) if b.asset else None
+            if b.headline:
+                doc.add_paragraph().add_run(b.headline).bold = True
+            for t in b.text.split("\n\n"):
+                if t.strip():
+                    doc.add_paragraph(t)
+            notes.append("Page layouts are exported as an image followed by their text in the DOCX")
         elif isinstance(b, ImageBlock):
             a = book.assets.get(b.asset)
             if a is None or not a.data:

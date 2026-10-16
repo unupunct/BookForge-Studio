@@ -1,2 +1,2 @@
 """BookForge Studio: local-first desktop book creation and publishing."""
-__version__ = "0.3.2"
+__version__ = "0.4.0"

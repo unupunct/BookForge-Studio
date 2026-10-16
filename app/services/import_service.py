@@ -9,7 +9,7 @@ from pathlib import Path
 from PIL import Image
 
 from ..domain.book import MAX_IMAGE_PIXELS, Asset, BookProject
-from ..domain.content_blocks import ImageBlock, RecipeBlock, new_id
+from ..domain.content_blocks import ImageBlock, LayoutBlock, RecipeBlock, new_id
 from ..domain.sections import BACK_KINDS, Section
 from ..importers.base import (MAX_IMPORT_BYTES, ImportFailure, ImportOptions, ImportReport,
                               ImportResult)
@@ -104,7 +104,7 @@ def run_import(path: Path, options: ImportOptions | None = None) -> StagedImport
 def _remap_assets(section: Section, mapping: dict[str, str]) -> None:
     for s in section.walk():
         for b in s.blocks:
-            if isinstance(b, ImageBlock) and b.asset in mapping:
+            if isinstance(b, (ImageBlock, LayoutBlock)) and b.asset in mapping:
                 b.asset = mapping[b.asset]
             elif isinstance(b, RecipeBlock) and b.image in mapping:
                 b.image = mapping[b.image]

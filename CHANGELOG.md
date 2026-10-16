@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.0 – page layouts
+
+- **Per-section page setup** (Section tab ▸ Page setup…): columns (1-4), own margins, own page size. Sub-sections
+  inherit. A change of size or margins starts a new page; the PDF, preview and checks follow each page's own size.
+- **Floated images**: text wraps beside the image (Image dialog ▸ Placement), caption under the image.
+- **Pinned images and text boxes** at an exact place on the page; **drag, resize and nudge them in the preview**
+  (one undoable step each).
+- **Designed pages** (Insert ▸ Page layout): full-page photo with caption overlay, image left/right of text, image on
+  top of text, quote page. Text shrinks to fit; missing images are reported by Validate.
+- Exports keep the content of the new blocks in EPUB, HTML, Markdown and DOCX.
+- Fixed while testing: a full-page layout no longer paints over a chapter title; a page break after a pinned item
+  works; splitting a section by poems keeps its page setup; a photo page at the end of the book is no longer treated as
+  the back cover when padding the page count.
+- `scripts/make_readme_images.py` renders the pictures of the README from neutral sample content (template covers,
+  page layouts, screen PDFs and window screenshots).
+
 ## 0.3.2 – template covers, live template preview, screen PDF options
 
 - **Every template has its own cover** (19 cover presets x 14 palettes; all 33 templates are distinct). New books get the
@@ -22,8 +38,6 @@
   prefilled with the guess; an explicit choice always wins. Detection returns nothing when unsure.
 - **Screen PDF** (phone / tablet / computer): re-laid out on a 108x192 mm single-page format with small margins,
   no facing pages, gutters, blank leaves or print marks. Part of Export all and the Export dialog.
-- `scripts/make_template_gallery.py` renders every template (cover + two pages) to images and a gallery PDF.
-  Limitation: the cover design is the default one, not template-specific.
 
 ## 0.3.0 – ten improvements
 

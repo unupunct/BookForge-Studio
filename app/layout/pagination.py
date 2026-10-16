@@ -10,9 +10,10 @@ from typing import Callable
 
 from ..domain.book import BookProject
 from ..domain.layouts import BookSettings
+from ..domain.page_setup import PageSetup, setup_for
 from .model import (Glyphs, LayoutIssue, LayoutResult, LineItem, OutlineEntry, Page)
 from .page_builder import (Atom, BuildContext, Flow, TOC_EXCLUDED, collect_toc, poem_entries,
-                           effective_margins, outline_entries, section_flows,
+                           outline_entries, section_flows,
                            section_signature, styles_signature)
 from .typography import fonts
 
@@ -36,7 +37,15 @@ class Paginator:
     def __init__(self, book: BookProject):
         self.book = book
         self.settings: BookSettings = book.settings
-        self.W, self.H = self.settings.page_size_pt()
+        self.setup: PageSetup = setup_for(self.settings, "front")  # geometry of the section being placed
+        self.page_setups: list[PageSetup] = []  # geometry of every page, parallel to `pages`
+        self.columns = 1
+        self.gap = 0.0
+        self.col = 0  # column being filled
+        self.col_used = False  # something was placed in this column
+        self.col_page = -1  # page on which the columns began (below a full-width title)
+        self.col_top = 0.0
+        self.page_max_y = 0.0  # lowest point reached on the current page, over all columns
         self.pages: list[Page] = []
         self.issues: list[LayoutIssue] = []
         self.block_pages: dict[str, list[int]] = {}
@@ -52,37 +61,79 @@ class Paginator:
         self._kwn_run = 0.0  # height of keep-with-next flows (e.g. a poem title) just placed on this page
 
     # ------------------------------------------------------------- pages
-    def _geometry(self, index: int, matter: str) -> tuple[str, tuple[float, float, float, float]]:
+    def _geometry(self, index: int, setup: PageSetup) -> tuple[str, tuple[float, float, float, float]]:
         side = "recto" if (not self.settings.facing_pages or index % 2 == 0) else "verso"
-        top, bottom, inner, outer = effective_margins(self.settings, matter)
+        top, bottom, inner, outer = setup.margins
         if self.settings.mirrored_margins and self.settings.facing_pages and side == "verso":
-            x0, x1 = outer, self.W - inner
+            x0, x1 = outer, setup.width - inner
         else:
-            x0, x1 = inner, self.W - outer
-        return side, (x0, top, x1, self.H - bottom)
+            x0, x1 = inner, setup.width - outer
+        return side, (x0, top, x1, setup.height - bottom)
 
     def _append_page(self, *, blank: str | None = None, full_bleed: bool = False,
-                     matter: str | None = None) -> Page:
+                     matter: str | None = None, setup: PageSetup | None = None) -> Page:
         idx = len(self.pages)
         matter = matter or self.matter
-        side, box = self._geometry(idx, matter)
-        page = Page(index=idx, width=self.W, height=self.H, side=side, content_box=box,
+        setup = setup or self.setup
+        side, box = self._geometry(idx, setup)
+        page = Page(index=idx, width=setup.width, height=setup.height, side=side, content_box=box,
                     matter=matter, section_id=self.section_id,
                     chapter_title=self.chapter_title, blank=blank, full_bleed=full_bleed)
         self.pages.append(page)
+        self.page_setups.append(setup)
         return page
+
+    def _regeometry(self, page: Page, setup: PageSetup) -> None:
+        """Give a page that has nothing on it yet the geometry of the section that now begins."""
+        page.side, page.content_box = self._geometry(page.index, setup)
+        page.width, page.height = setup.width, setup.height
+        self.page_setups[page.index] = setup
+        self.y = page.content_box[1]
+        self.page_max_y = self.y
+
+    # ---- columns: the "slot" is the column currently being filled
+    def _slot(self, page: Page) -> tuple[float, float, float, float]:
+        x0, top, x1, bottom = page.content_box
+        n = self.columns
+        if n > 1:
+            cw = (x1 - x0 - self.gap * (n - 1)) / n
+            x0 = x0 + self.col * (cw + self.gap)
+            x1 = x0 + cw
+            if page.index == self.col_page:
+                top = max(top, self.col_top)
+        return x0, top, x1, bottom
+
+    def _advance(self) -> None:
+        """Continue in the next column, or on the next page after the last column."""
+        if self.columns > 1 and self.cur is not None and self.col < self.columns - 1:
+            self.col += 1
+            self.col_used = False
+            self.y = self._slot(self.cur)[1]
+            self.pending_after = 0.0
+            self._kwn_run = 0.0
+        else:
+            self._new_page()
+
+    def _reg(self, block_id: str | None, page: Page) -> None:
+        if block_id:
+            lst = self.block_pages.setdefault(block_id, [])
+            if not lst or lst[-1] != page.index:
+                lst.append(page.index)
 
     def _ensure_page(self) -> Page:
         if self.cur is None:
             if self.want_recto and self.settings.facing_pages and len(self.pages) % 2 == 1:
                 # padding belongs to the matter it follows, so numbering is not disturbed
-                blank = self._append_page(blank="intentional", matter=self.pages[-1].matter)
+                blank = self._append_page(blank="intentional", matter=self.pages[-1].matter,
+                                          setup=self.page_setups[-1])
                 blank.used = True
             self.want_recto = False
             self.cur = self._append_page()
             self.cur.opening = self.opening_pending
             self.opening_pending = False
-            self.y = self.cur.content_box[1]
+            self.col, self.col_used = 0, False
+            self.y = self._slot(self.cur)[1]
+            self.page_max_y = self.y
             self.pending_after = 0.0
             self._kwn_run = 0.0
         return self.cur
@@ -92,7 +143,7 @@ class Paginator:
         self.want_recto = self.want_recto or recto
 
     def _at_top(self) -> bool:
-        return self.cur is None or not self.cur.used
+        return self._at_top_page()
 
     def _issue(self, severity: str, code: str, message: str, block_id: str | None = None) -> None:
         page = self.cur.index if self.cur else (len(self.pages) - 1 if self.pages else None)
@@ -110,10 +161,42 @@ class Paginator:
             if ctl["new_page"]:
                 self._new_page(ctl["recto"])
                 self.opening_pending = ctl["opening"]
+            setup = ctl.get("setup") or self.setup
+            cur = self.cur
+            if cur is not None and setup.geometry() != self.page_setups[cur.index].geometry():
+                if cur.used or cur.items:  # size or margins change: the new section needs a page of its own
+                    self._new_page()
+                else:
+                    self._regeometry(cur, setup)
+            if self.columns > 1 and self.cur is not None:  # leave the column area: continue below its lowest column
+                self.y = max(self.y, self.page_max_y)
+            self.setup = setup
+            self.columns, self.gap, self.col, self.col_used = 1, 0.0, 0, False
+        elif c == "columns":
+            page = self._ensure_page()
+            self.columns, self.gap = int(f.ctl["n"]), float(f.ctl["gap"])
+            self.col, self.col_used = 0, False
+            self.col_page = page.index
+            self.col_top = self.y + (self.pending_after if page.used else 0.0)
+            self.y = self.col_top
+            self.pending_after = 0.0
+        elif c == "overlay":
+            page = self._ensure_page()
+            page.items.extend(f.ctl["items"])
+            self._reg(f.block_id, page)
+        elif c == "page_items":
+            if self.cur is not None and (self.cur.used or self.cur.items):
+                self._new_page()
+            page = self._ensure_page()
+            x0, top, _x1, _bottom = page.content_box
+            page.items.extend(it.moved(x0, top) for it in f.ctl["items"])
+            page.used = True
+            self._reg(f.block_id, page)
+            self._new_page()
         elif c == "page_break":
             blank = f.ctl.get("blank", False)
             recto = f.ctl.get("recto", False)
-            if self.cur is not None and self.cur.used:
+            if self.cur is not None and (self.cur.used or self.cur.items):
                 self._new_page(recto)
                 if blank:
                     page = self._ensure_page()
@@ -124,12 +207,18 @@ class Paginator:
                 page.blank, page.used = "intentional", True
                 self._new_page(recto)
         elif c == "full_page":
+            if self.cur is not None and (self.cur.used or self.cur.items):  # never paint over earlier content
+                self._new_page()
             page = self._ensure_page()
             page.full_bleed = True
+            page.cover = f.ctl.get("cover", "")
             page.used = True
             page.items.extend(f.ctl["items"])
+            self._reg(f.block_id, page)
             self._new_page()
         elif c == "blank_page":
+            if self.cur is not None and self.cur.items and not self.cur.used:
+                self._new_page()  # a page that already carries pinned items is not blank
             page = self._ensure_page()
             page.blank, page.used = "intentional", True
             self._new_page()
@@ -161,7 +250,7 @@ class Paginator:
                      ) -> None:
         page = self.cur
         assert page is not None
-        x0 = page.content_box[0]
+        x0 = self._slot(page)[0]
         y = self.y + page_y_offset
         for j, a in enumerate(atoms):
             if j > 0:
@@ -170,23 +259,26 @@ class Paginator:
                 page.items.append(it.moved(x0, y))
             y += a.height
         self.y = y
+        self.page_max_y = max(self.page_max_y, y)
         page.used = True
-        if flow.block_id:
-            lst = self.block_pages.setdefault(flow.block_id, [])
-            if not lst or lst[-1] != page.index:
-                lst.append(page.index)
+        self.col_used = True
+        self._reg(flow.block_id, page)
+        for bid in flow.block_ids:
+            self._reg(bid, page)
 
     def add_flow(self, flows: list[Flow], i: int) -> None:
         f = flows[i]
         if f.control:
             self._control(f)
+            for sev, code, msg in f.issues:
+                self._issue(sev, code, msg, f.block_id)
             return
         if not f.atoms:
             return
         if f.own_page:
             self._new_page()
         page = self._ensure_page()
-        x0, top, x1, bottom = page.content_box
+        x0, top, x1, bottom = self._slot(page)
         content_h = bottom - top
         for sev, code, msg in f.issues:
             self._issue(sev, code, msg, f.block_id)
@@ -200,10 +292,10 @@ class Paginator:
             remaining = bottom - self.y - gap()
             if f.keep_with_next and self._chain_height(flows, i, 0, content_h) <= content_h and \
                     self._chain_height(flows, i, 0, content_h) > remaining:
-                self._new_page()
+                self._advance()
                 page = self._ensure_page()
             elif f.keep_together and f.height + self._kwn_run <= content_h and f.height > remaining:
-                self._new_page()
+                self._advance()
                 page = self._ensure_page()
 
         n = len(f.atoms)
@@ -215,8 +307,9 @@ class Paginator:
                 self._issue("error", "layout_loop", "Pagination did not converge", f.block_id)
                 break
             page = self._ensure_page()
-            x0, top, x1, bottom = page.content_box
-            at_top = not page.used
+            x0, top, x1, bottom = self._slot(page)
+            at_top = self._at_top_page()
+            content_h = bottom - top
             if idx == 0:
                 g = f.drop if at_top else max(self.pending_after, f.space_before, f.drop)
             else:
@@ -253,13 +346,13 @@ class Paginator:
                     if fit_k > 0:
                         k = fit_k  # rules cannot be honoured on an empty page; use what fits
                     else:
-                        # nothing fits on an empty page: place it anyway and report it
+                        # nothing fits on an empty page or column: place it anyway and report it
                         k = 1
                         self._issue("error", "overflow",
                                     "Content is taller than the available page area and "
                                     "will be clipped", f.block_id)
                 else:
-                    self._new_page()
+                    self._advance()
                     continue
             if idx == 0:
                 for anc in f.anchors:
@@ -278,14 +371,16 @@ class Paginator:
                 if f.ctl.get("poem"):
                     self._issue("info", "poem_continues",
                                 "A poem continues on the next page", f.block_id)
-                self._new_page()
+                self._advance()
         self.pending_after = f.space_after
         self._kwn_run = self._kwn_run + f.height + f.space_after if f.keep_with_next else 0.0
         if f.own_page:
             self._new_page()
 
     def _at_top_page(self) -> bool:
-        return self.cur is None or not self.cur.used
+        if self.cur is None:
+            return True
+        return not (self.cur.used if self.columns == 1 else self.col_used)
 
     def finish(self) -> None:
         if not self.pages:
@@ -294,17 +389,20 @@ class Paginator:
         mult = self.settings.page_multiple
         if mult and mult > 1 and len(self.pages) % mult:
             # Printers bind in signatures: add intentional blank leaves before a back cover (if any).
-            back = self.pages.pop() if len(self.pages) > 1 and self.pages[-1].full_bleed else None
+            back = self.pages.pop() if len(self.pages) > 1 and self.pages[-1].cover == "back" else None
+            back_setup = self.page_setups.pop() if back is not None else None
             add = (-(len(self.pages) + (1 if back else 0))) % mult
             self.cur = None
             self.matter = "back"
+            self.columns = 1
             for _ in range(add):
-                self._append_page(blank="intentional").used = True
+                self._append_page(blank="intentional", setup=self.page_setups[-1]).used = True
             added = add
             if back is not None:
                 back.index = len(self.pages)
                 back.side = "recto" if (not self.settings.facing_pages or back.index % 2 == 0) else "verso"
                 self.pages.append(back)
+                self.page_setups.append(back_setup)
             self.issues.append(LayoutIssue("info", "pages_padded",
                                            f"{added} blank page(s) added so the page count is a multiple of {mult}",
                                            len(self.pages) - 1))

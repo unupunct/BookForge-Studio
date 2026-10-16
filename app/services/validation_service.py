@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from ..domain.content_blocks import LayoutBlock
 from ..domain.book import BookProject
 from ..domain.content_blocks import (CodeBlock, ExerciseBlock, HeadingBlock, ImageBlock,
                                      PoetryBlock, RecipeBlock, plain_runs)
@@ -79,6 +80,9 @@ def validate_book(book: BookProject, layout: LayoutResult | None = None,
         if not s.enabled:
             continue
         for b in s.blocks:
+            if isinstance(b, LayoutBlock) and b.layout != "quote_page" and not (book.assets.get(b.asset) and book.assets[b.asset].data):
+                rep.add("error", "missing_asset", f"Page layout image in '{s.title}' cannot be found (relink or remove it)",
+                        section_id=s.id, block_id=b.id)
             if isinstance(b, ImageBlock):
                 a = book.assets.get(b.asset)
                 if a is None or not a.data:

@@ -5,8 +5,9 @@ import re
 from pathlib import Path
 
 from ..domain.book import BookProject
+from ..domain.content_blocks import TextBoxBlock
 from ..domain.content_blocks import (Block, CodeBlock, ExerciseBlock, FootnoteBlock, HeadingBlock,
-                                     ImageBlock, ListBlock, PageBreakBlock, ParagraphBlock,
+                                     ImageBlock, LayoutBlock, ListBlock, PageBreakBlock, ParagraphBlock,
                                      PoetryBlock, QuoteBlock, RecipeBlock, Run, SceneBreakBlock,
                                      TableBlock, runs_text)
 from ..domain.sections import GENERATED_KINDS, Section
@@ -72,6 +73,15 @@ def render_markdown(book: BookProject, image_dir_name: str,
             fname = images.setdefault(b.asset, (re.sub(r"[^A-Za-z0-9._-]", "_", f"{a.id}_{a.filename}"), a.data))[0]
             cap = runs_text(b.caption)
             return f"![{_esc(b.alt)}]({image_dir_name}/{fname}" + (f' "{cap}")' if cap else ")")
+        if isinstance(b, TextBoxBlock):
+            return _esc(b.text)
+        if isinstance(b, LayoutBlock):
+            a = book.assets.get(b.asset)
+            img = ""
+            if a is not None and a.data:
+                fname = images.setdefault(b.asset, (re.sub(r"[^A-Za-z0-9._-]", "_", f"{a.id}_{a.filename}"), a.data))[0]
+                img = f"![{_esc(b.headline)}]({image_dir_name}/{fname})\n\n"
+            return img + (f"**{_esc(b.headline)}**\n\n" if b.headline else "") + _esc(b.text)
         if isinstance(b, TableBlock):
             if not b.rows:
                 return ""

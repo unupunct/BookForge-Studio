@@ -180,9 +180,74 @@ class ImageBlock(Block):
     caption: list[Run] = field(default_factory=list)
     own_page: bool = False  # place on a dedicated page
     crop: list[float] | None = None  # [left, top, right, bottom] fractions
+    # Placement: "inline" flows with the text; "wrap_left"/"wrap_right" floats the image with the following
+    # paragraphs wrapped beside it; "page" pins it at an exact spot of the page where the block stands.
+    place: str = "inline"
+    px: float = 0.1  # page placement: left edge, fraction of the page width
+    py: float = 0.1  # top edge, fraction of the page height
+    pw: float = 0.5  # width, fraction of the page width (height follows the aspect ratio)
+    rotation: float = 0.0  # degrees, counter-clockwise (page placement)
+    opacity: float = 1.0
 
     def plain_text(self) -> str:
         return runs_text(self.caption)
+
+
+@dataclass
+class TextBoxBlock(Block):
+    """Plain text pinned at an exact spot of the page where the block stands (does not flow)."""
+
+    type: ClassVar[str] = "textbox"
+    text: str = ""
+    px: float = 0.1  # fractions of the page: left, top, width, height
+    py: float = 0.1
+    pw: float = 0.5
+    ph: float = 0.2
+    font_family: str = ""  # "" = the book's body font
+    size: float = 12.0
+    bold: bool = False
+    italic: bool = False
+    color: str = "#222222"
+    align: str = "left"  # left | center | right
+    valign: str = "top"  # top | middle | bottom
+    background: str = ""  # "" = transparent
+    background_opacity: float = 1.0
+    rotation: float = 0.0
+    autofit: bool = True  # shrink the text until it fits the box
+
+    def plain_text(self) -> str:
+        return self.text
+
+
+LAYOUT_KINDS = {
+    "photo_full": "Full-page photo (caption overlay)",
+    "image_left": "Image left, text right",
+    "image_right": "Image right, text left",
+    "image_top": "Image on top, text below",
+    "quote_page": "Quote page",
+}
+
+
+@dataclass
+class LayoutBlock(Block):
+    """A whole designed page: a photo page with overlay text, image beside text, or a quote page."""
+
+    type: ClassVar[str] = "page_layout"
+    layout: str = "photo_full"
+    asset: str = ""
+    text: str = ""  # plain text; blank lines separate paragraphs
+    headline: str = ""  # photo_full: the line shown on the overlay band; image layouts: a caption; quote: attribution
+    image_pct: float = 45.0  # share of the page area given to the image (side-by-side layouts)
+    overlay: str = "bottom"  # photo_full caption position: bottom | top | middle | none
+    overlay_color: str = "#000000"
+    overlay_opacity: float = 0.55
+    text_color: str = "#FFFFFF"  # photo_full overlay text colour
+    font_family: str = ""
+    size: float = 11.0  # text size (photo_full caption: x1.4)
+    align: str = "left"
+
+    def plain_text(self) -> str:
+        return "\n".join(t for t in (self.headline, self.text) if t).strip()
 
 
 @dataclass

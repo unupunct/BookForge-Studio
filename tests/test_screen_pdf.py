@@ -23,7 +23,7 @@ def print_book():
 def test_screen_edition_does_not_touch_the_book():
     b = print_book()
     ed = screen_edition(b)
-    assert ed is not b and ed.sections is b.sections
+    assert ed is not b and ed.sections[0].blocks is b.sections[0].blocks  # blocks shared, sections copied
     assert (b.settings.width_mm, b.settings.page_multiple, b.settings.facing_pages) == (148, 8, True)
     st = ed.settings
     assert (st.width_mm, st.height_mm) == (SCREEN_WIDTH_MM, SCREEN_HEIGHT_MM)

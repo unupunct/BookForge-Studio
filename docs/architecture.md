@@ -86,3 +86,19 @@ orders of magnitude.
 * **New export format:** add a module in `app/exporters` and a branch in `services/export_service.py`.
 * **New book category:** add a `BookProfile` in `services/project_service.py` and, if needed, a template JSON.
 * **New template:** edit `scripts/generate_templates.py` and run it, or drop a JSON file in your templates folder.
+
+
+## Page layouts (0.4.0)
+
+* `domain/page_setup.py` turns the book's settings plus a section's `page` override (size, margins, columns) into a
+  `PageSetup`. Sub-sections inherit their parent's override. Invalid values are ignored, never an error.
+* `layout/page_builder.py` builds flows at the column width and emits control flows: `section_start` (carries the
+  setup), `columns`, `overlay` (pinned items, no flow space), `page_items` (a designed page inside the margins) and
+  `full_page` (covers and photo pages). `wrap_flows` lays out a floated image together with the paragraphs beside it
+  using per-line widths (`break_lines(width_of=...)`).
+* `layout/pagination.py` keeps a `PageSetup` per page (so one book can have several page sizes), treats the current
+  column as a *slot* (`_slot`, `_advance`) and forces a new page when size or margins change. Everything else
+  (widows, keep-with-next, tightening) is unchanged and works per column.
+* The PDF exporter takes each page's size from `Page.width/height`; the verification step checks every page.
+* Pinned items are edited in the preview: `PageCanvas` hit-tests them, a drag or resize ends in one undoable
+  `AppState.edit` that stores positions as fractions of the page, and the chapter editor refreshes its own copy.

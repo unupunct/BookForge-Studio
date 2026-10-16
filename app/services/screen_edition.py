@@ -35,10 +35,19 @@ SCREEN_WIDTH_MM, SCREEN_HEIGHT_MM = SIZES[DEFAULT_SIZE].width_mm, SIZES[DEFAULT_
 DARK_PAGE = "#15171C"
 
 
+def _without_page_setup(sections):
+    """Sections as they are, minus their own page size, margins and columns (blocks are shared, read-only)."""
+    return [replace(s, page={}, children=_without_page_setup(s.children)) for s in sections]
+
+
 def screen_edition(book: BookProject, size: str = DEFAULT_SIZE) -> BookProject:
-    """Shallow copy of `book` (sections and assets shared, read-only) with screen settings."""
+    """Shallow copy of `book` (blocks and assets shared, read-only) with screen settings.
+
+    Per-section page sizes and columns are dropped: on a screen every page has the same format.
+    """
     sz = SIZES.get(size, SIZES[DEFAULT_SIZE])
     ed = copy.copy(book)
+    ed.sections = _without_page_setup(book.sections)
     st = copy.deepcopy(book.settings)
     st.page_size, st.width_mm, st.height_mm, st.landscape = "Custom", sz.width_mm, sz.height_mm, False
     st.margins = copy.copy(sz.margins)

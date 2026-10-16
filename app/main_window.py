@@ -241,6 +241,7 @@ class MainWindow(QMainWindow):
         self.editor.message.connect(lambda m: self.statusBar().showMessage(m, 6000))
         self.editor.edit.cursorPositionChanged.connect(self.properties.block_tab.refresh)
         self.preview.block_requested.connect(self._open_block)
+        self.preview.geometry_committed.connect(self.editor.block_changed_externally)
         self.properties.templates_requested.connect(self.templates)
         s.layout_controller.layout_failed.connect(
             lambda m: self.statusBar().showMessage("Layout problem: " + m, 8000))

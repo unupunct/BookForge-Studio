@@ -16,6 +16,7 @@ from ..domain.sections import ALL_KINDS, KIND_LABELS
 from ..domain.styles import StyleDefinition, StyleSet, default_styles
 from ..layout.typography import LOGICAL_FAMILIES, fonts
 from ..services.template_service import apply_template
+from .dialogs.page_setup_dialog import SectionPageDialog, describe_page
 
 STYLE_LABELS = {
     "body": "Body Text", "first_paragraph": "First Paragraph", "book_title": "Book Title",
@@ -64,12 +65,18 @@ class SectionTab(QWidget):
         self.new_page.addItem("Continue on the current page", False)
         self.stats = QLabel("")
         self.stats.setProperty("muted", True)
+        self.page_btn = QPushButton("Page setup…")
+        self.page_btn.setToolTip("Own page size, margins or columns for this section")
+        self.page_info = QLabel("")
+        self.page_info.setProperty("muted", True)
         form.addRow("Title", self.title)
         form.addRow("Type", self.kind)
         form.addRow("", self.enabled)
         form.addRow("", self.in_toc)
         form.addRow("", self.show_title)
         form.addRow("Page break", self.new_page)
+        form.addRow("Page setup", self.page_btn)
+        form.addRow("", self.page_info)
         form.addRow("", self.stats)
         self.title.editingFinished.connect(self._title_done)
         self.kind.activated.connect(lambda _: self._apply(kind=self.kind.currentData()))
@@ -77,6 +84,7 @@ class SectionTab(QWidget):
         self.in_toc.toggled.connect(lambda v: self._apply(in_toc=v))
         self.show_title.toggled.connect(lambda v: self._apply(show_title=v))
         self.new_page.activated.connect(lambda _: self._apply(new_page=self.new_page.currentData()))
+        self.page_btn.clicked.connect(self._page_setup)
 
     def load(self, section_id: str | None) -> None:
         self.section_id = section_id
@@ -90,6 +98,7 @@ class SectionTab(QWidget):
             self.in_toc.setChecked(sec.in_toc)
             self.show_title.setChecked(sec.show_title)
             self.new_page.setCurrentIndex({None: 0, True: 1, False: 2}[sec.new_page])
+            self.page_info.setText(describe_page(sec.page))
             self.stats.setText(f"{self.state.project.word_count(sec):,} words • "
                                f"{self.state.project.char_count(sec):,} characters")
         self._loading = False
@@ -105,6 +114,16 @@ class SectionTab(QWidget):
         if self._loading or not self.section_id:
             return
         self.state.set_section_attr(self.section_id, **attrs)
+
+    def _page_setup(self) -> None:
+        sec = self.state.project.find_section(self.section_id) if self.section_id else None
+        if sec is None:
+            return
+        dlg = SectionPageDialog(self, sec, self.state.project.settings)
+        if dlg.exec():
+            page = dlg.result_page()
+            self.state.set_section_attr(self.section_id, page=page)
+            self.page_info.setText(describe_page(page))
 
 
 class BlockTab(QWidget):

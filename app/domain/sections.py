@@ -48,6 +48,9 @@ class Section:
     in_toc: bool = True
     new_page: bool | None = None  # None -> follow book settings
     show_title: bool = True
+    # Page setup override for this section (and its sub-sections): "columns", "column_gap_mm",
+    # "margins" {top,bottom,inner,outer} in mm, "page_size" or "width_mm"/"height_mm". Empty = book settings.
+    page: dict[str, Any] = field(default_factory=dict)
 
     @property
     def matter(self) -> str:
@@ -59,13 +62,16 @@ class Section:
             yield from c.walk()
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        d = {
             "id": self.id, "title": self.title, "kind": self.kind,
             "enabled": self.enabled, "in_toc": self.in_toc, "new_page": self.new_page,
             "show_title": self.show_title,
             "blocks": [b.to_dict() for b in self.blocks],
             "children": [c.to_dict() for c in self.children],
         }
+        if self.page:
+            d["page"] = dict(self.page)
+        return d
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> "Section":
@@ -73,6 +79,7 @@ class Section:
             id=d.get("id") or new_id(), title=d.get("title", ""), kind=d.get("kind", "chapter"),
             enabled=d.get("enabled", True), in_toc=d.get("in_toc", True),
             new_page=d.get("new_page"), show_title=d.get("show_title", True),
+            page=dict(d.get("page") or {}),
             blocks=[Block.from_dict(b) for b in d.get("blocks", [])],
             children=[cls.from_dict(c) for c in d.get("children", [])],
         )

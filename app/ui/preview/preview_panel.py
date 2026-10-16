@@ -10,12 +10,17 @@ from PySide6.QtWidgets import (QComboBox, QHBoxLayout, QLabel, QListWidget, QLis
                                QToolButton, QVBoxLayout, QWidget)
 
 from ...application_state import AppState
-from ...layout.model import LayoutResult, Page
+from ...domain.content_blocks import ImageBlock, TextBoxBlock
+from ...layout.model import ImageItem, LayoutResult, Page
 from .. import theme
 from .page_renderer import block_at, block_bbox, render_page
 
 ZOOMS = ["Fit width", "Fit page", "50%", "75%", "100%", "125%", "150%", "200%"]
 SCREEN_SCALE = 96.0 / 72.0  # 100% zoom: one point == one CSS pixel at 96 dpi
+
+
+HANDLE = 11  # px, size of the resize handle
+MIN_BOX = 14.0  # pt, smallest size a dragged box can be given
 
 
 class PageCanvas(QWidget):
@@ -26,7 +31,39 @@ class PageCanvas(QWidget):
         self.panel = panel
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setMouseTracking(True)
+        self.setFocusPolicy(Qt.StrongFocus)
         self.setAccessibleName("Page preview")
+        self.selected: str | None = None  # a pinned image or text box chosen for moving/resizing
+        self._drag: dict | None = None  # live move/resize: {"id", "mode", "start", "box", "now"}
+
+    # ---- pinned items (images and text boxes placed at an exact spot) -----------------------
+    def _box_pt(self, page: Page, bid: str) -> tuple[float, float, float, float] | None:
+        """x, y, w, h of a pinned block on `page`, in points."""
+        blk = self.panel.pinned.get(bid)
+        if blk is None:
+            return None
+        if isinstance(blk, TextBoxBlock):
+            return blk.px * page.width, blk.py * page.height, blk.pw * page.width, blk.ph * page.height
+        for it in page.items:
+            if isinstance(it, ImageItem) and it.block_id == bid:
+                return it.x, it.y, it.w, it.h
+        return None
+
+    def _pinned_at(self, page: Page, x: float, y: float) -> str | None:
+        seen = []
+        for it in page.items:
+            bid = getattr(it, "block_id", None)
+            if bid and bid in self.panel.pinned and bid not in seen:
+                seen.append(bid)
+        for bid in reversed(seen):  # the topmost (last drawn) wins
+            box = self._box_pt(page, bid)
+            if box and box[0] <= x <= box[0] + box[2] and box[1] <= y <= box[1] + box[3]:
+                return bid
+        return None
+
+    def _screen_box(self, rect: QRectF, box: tuple[float, float, float, float]) -> QRectF:
+        s = self.panel.scale()
+        return QRectF(rect.x() + box[0] * s, rect.y() + box[1] * s, box[2] * s, box[3] * s)
 
     def pages_shown(self) -> list[Page]:
         return self.panel.visible_pages()
@@ -67,6 +104,7 @@ class PageCanvas(QWidget):
                     pt.fillRect(r, QColor(208, 140, 75, 60))
                     pt.setPen(QPen(QColor(theme.ACCENT), 2))
                     pt.drawRect(r)
+            self._paint_selection(pt, page, rect, s)
             issues = self.panel.page_issues(page.index)
             if issues:
                 sev = "error" if any(i.severity == "error" for i in issues) else "warning"
@@ -79,23 +117,121 @@ class PageCanvas(QWidget):
                             f"⚠ {len(issues)} issue{'s' if len(issues) != 1 else ''}")
         pt.end()
 
+    def _paint_selection(self, pt: QPainter, page: Page, rect: QRectF, s: float) -> None:
+        d = self._drag
+        bid = d["id"] if d else self.selected
+        if not bid or bid not in self.panel.pinned:
+            return
+        box = d["now"] if d and d["page"] == page.index else self._box_pt(page, bid)
+        if box is None or (d and d["page"] != page.index):
+            return
+        r = self._screen_box(rect, box)
+        pen = QPen(QColor(theme.ACCENT), 1.5, Qt.DashLine)
+        pt.setPen(pen)
+        pt.setBrush(Qt.NoBrush)
+        pt.drawRect(r)
+        pt.fillRect(QRectF(r.right() - HANDLE / 2, r.bottom() - HANDLE / 2, HANDLE, HANDLE), QColor(theme.ACCENT))
+
+    def _handle_hit(self, page: Page, rect: QRectF, pos) -> bool:
+        if not self.selected:
+            return False
+        box = self._box_pt(page, self.selected)
+        if box is None:
+            return False
+        r = self._screen_box(rect, box)
+        return abs(pos.x() - r.right()) <= HANDLE and abs(pos.y() - r.bottom()) <= HANDLE
+
     def mousePressEvent(self, e) -> None:
         pos = e.position()
         s = self.panel.scale()
+        self.setFocus()
         for page, rect in self._rects():
-            if rect.contains(pos):
-                bid = block_at(page, (pos.x() - rect.x()) / s, (pos.y() - rect.y()) / s)
-                if bid:
-                    self.block_clicked.emit(bid, page.index)
+            if not rect.contains(pos):
+                continue
+            px, py = (pos.x() - rect.x()) / s, (pos.y() - rect.y()) / s
+            if e.button() == Qt.LeftButton and self._handle_hit(page, rect, pos):
+                box = self._box_pt(page, self.selected)
+                self._drag = {"id": self.selected, "mode": "resize", "page": page.index, "start": (px, py),
+                              "box": box, "now": box, "moved": False}
                 return
+            pinned = self._pinned_at(page, px, py) if e.button() == Qt.LeftButton else None
+            if pinned:
+                self.selected = pinned
+                box = self._box_pt(page, pinned)
+                self._drag = {"id": pinned, "mode": "move", "page": page.index, "start": (px, py), "box": box,
+                              "now": box, "moved": False}
+                self.update()
+                return
+            self.selected = None
+            self.update()
+            bid = block_at(page, px, py)
+            if bid:
+                self.block_clicked.emit(bid, page.index)
+            return
+        self.selected = None
+        self.update()
+
+    def mouseReleaseEvent(self, e) -> None:
+        d, self._drag = self._drag, None
+        if not d:
+            return
+        page = next((p for p, _r in self._rects() if p.index == d["page"]), None)
+        if page is None:
+            return
+        if d["moved"]:
+            self.panel.commit_box(d["id"], page, d["now"], resized=d["mode"] == "resize")
+        else:
+            self.block_clicked.emit(d["id"], page.index)
+        self.update()
+
+    def keyPressEvent(self, e) -> None:
+        step = {Qt.Key_Left: (-1, 0), Qt.Key_Right: (1, 0), Qt.Key_Up: (0, -1), Qt.Key_Down: (0, 1)}.get(e.key())
+        if e.key() == Qt.Key_Escape:
+            self.selected = None
+            self.update()
+        elif step and self.selected:
+            mult = 4.0 if e.modifiers() & Qt.ShiftModifier else 1.0
+            for page, _r in self._rects():
+                box = self._box_pt(page, self.selected)
+                if box:
+                    nb = (box[0] + step[0] * mult, box[1] + step[1] * mult, box[2], box[3])
+                    self.panel.commit_box(self.selected, page, nb, resized=False)
+                    break
+        else:
+            super().keyPressEvent(e)
 
     def mouseMoveEvent(self, e) -> None:
         pos = e.position()
         s = self.panel.scale()
+        d = self._drag
+        if d:
+            page = next((p for p, _r in self._rects() if p.index == d["page"]), None)
+            rect = next((r for p, r in self._rects() if p.index == d["page"]), None)
+            if page is not None and rect is not None:
+                px, py = (pos.x() - rect.x()) / s, (pos.y() - rect.y()) / s
+                dx, dy = px - d["start"][0], py - d["start"][1]
+                bx, by, bw, bh = d["box"]
+                if abs(dx) + abs(dy) > 1.5 / s:
+                    d["moved"] = True
+                if d["mode"] == "move":
+                    d["now"] = (bx + dx, by + dy, bw, bh)
+                else:
+                    ratio = bh / bw if bw else 1.0
+                    nw = max(bw + dx, MIN_BOX)
+                    is_text = isinstance(self.panel.pinned.get(d["id"]), TextBoxBlock)
+                    d["now"] = (bx, by, nw, max(bh + dy, MIN_BOX) if is_text else nw * ratio)
+                self.update()
+            return
         cur = Qt.ArrowCursor
         for page, rect in self._rects():
-            if rect.contains(pos) and block_at(page, (pos.x() - rect.x()) / s,
-                                                (pos.y() - rect.y()) / s):
+            if not rect.contains(pos):
+                continue
+            px, py = (pos.x() - rect.x()) / s, (pos.y() - rect.y()) / s
+            if self._handle_hit(page, rect, pos):
+                cur = Qt.SizeFDiagCursor
+            elif self._pinned_at(page, px, py):
+                cur = Qt.SizeAllCursor
+            elif block_at(page, px, py):
                 cur = Qt.PointingHandCursor
         self.setCursor(cur)
         issues = []
@@ -108,6 +244,7 @@ class PageCanvas(QWidget):
 class PreviewPanel(QWidget):
     block_requested = Signal(str)        # user clicked a block in the preview
     page_changed = Signal(int)
+    geometry_committed = Signal(str)     # a pinned image/text box was moved or resized (block id)
 
     def __init__(self, state: AppState, parent: QWidget | None = None):
         super().__init__(parent)
@@ -120,6 +257,7 @@ class PreviewPanel(QWidget):
         self._thumb_queue: list[int] = []
         self._zoom_text = "Fit width"
         self._spread = False
+        self.pinned: dict[str, object] = {}  # id -> ImageBlock (placed on the page) / TextBoxBlock
 
         bar = QHBoxLayout()
         bar.setContentsMargins(8, 6, 8, 6)
@@ -188,9 +326,33 @@ class PreviewPanel(QWidget):
         state.layout_ready.connect(self.set_layout)
 
     # ------------------------------------------------------------- data
+    def _collect_pinned(self) -> None:
+        self.pinned = {b.id: b for s in self.state.project.walk() for b in s.blocks
+                       if isinstance(b, TextBoxBlock) or (isinstance(b, ImageBlock) and b.place == "page")}
+
+    def commit_box(self, block_id: str, page: Page, box: tuple[float, float, float, float], resized: bool) -> None:
+        """Store a dragged position/size (in points on `page`) as fractions of the page: one undo step."""
+        x, y, w, h = box
+        W, H = page.width, page.height
+
+        def fn(project) -> None:
+            for s in project.walk():
+                for b in s.blocks:
+                    if b.id != block_id:
+                        continue
+                    b.px, b.py = round(x / W, 4), round(y / H, 4)
+                    if resized:
+                        b.pw = round(max(w, MIN_BOX) / W, 4)
+                        if isinstance(b, TextBoxBlock):
+                            b.ph = round(max(h, MIN_BOX) / H, 4)
+        self.state.edit("Resize item" if resized else "Move item", fn, kind="structure",
+                        merge_key=f"pin:{block_id}:{'size' if resized else 'pos'}")
+        self.geometry_committed.emit(block_id)
+
     def set_layout(self, result: LayoutResult) -> None:
         first = self.layout_result is None
         self.layout_result = result
+        self._collect_pinned()
         self._cache.clear()
         self._issues_by_page.clear()
         for i in result.issues:

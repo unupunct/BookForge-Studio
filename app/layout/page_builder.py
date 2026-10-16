@@ -10,17 +10,19 @@ import hashlib
 import json
 import math
 from dataclasses import dataclass, field, replace
-from typing import Any
+from typing import Any, Callable
 
 from ..domain.book import BookProject
 from ..domain.content_blocks import (Block, CodeBlock, ExerciseBlock, FootnoteBlock,
-                                     HeadingBlock, ImageBlock, ListBlock, PageBreakBlock,
+                                     HeadingBlock, ImageBlock, LayoutBlock, ListBlock, PageBreakBlock,
                                      ParagraphBlock, PoetryBlock, QuoteBlock, RecipeBlock,
-                                     Run, SceneBreakBlock, TableBlock, plain_runs, runs_text)
-from ..domain.layouts import MM_TO_PT, BookSettings
+                                     Run, SceneBreakBlock, TableBlock, TextBoxBlock, plain_runs, runs_text)
+from ..domain.layouts import MM_TO_PT, BookSettings, CoverLayer
+from ..domain.page_setup import PageSetup, merge_page_dicts, setup_for
 from ..i18n import exercise_label, tr
 from ..domain.sections import GENERATED_KINDS, RECTO_KINDS, Section
 from ..domain.styles import ResolvedStyle, StyleSet
+from .cover_builder import layer_items
 from .hyphenation import get_hyphenator
 from .measurement import break_lines, place_line, text_width, tokenize
 from .model import Glyphs, ImageItem, Item, LayoutIssue, LineItem, RectItem
@@ -51,6 +53,7 @@ class Flow:
     header_atoms: list[Atom] = field(default_factory=list)  # repeated on continuation pages
     own_page: bool = False  # image on a dedicated page
     drop: float = 0.0  # extra space above a chapter opening, kept even at the top of a page
+    block_ids: list[str] = field(default_factory=list)  # further blocks drawn inside this flow (wrapped text)
     issues: list[tuple[str, str, str]] = field(default_factory=list)  # severity, code, message
     # control flows: section_start | page_break | full_page | blank_page
     control: str | None = None
@@ -98,7 +101,8 @@ class BuildContext:
                                first_indent=st.first_line_indent)
         self.styles = StyleSet(defs)
         self.matter = "main"
-        self.width, self.height = content_size(self.settings, "main")
+        self.setup: PageSetup = setup_for(self.settings, "main")
+        self.width, self.height, self.full_width = self.setup.column_width, self.setup.content_height, self.setup.content_width
         self.hyphenator = get_hyphenator(book.metadata.language) if st.hyphenate else None
         self.chapter_numbers: dict[str, int] = {}
         n = 0
@@ -108,8 +112,14 @@ class BuildContext:
                 self.chapter_numbers[sec.id] = n
 
     def use_matter(self, matter: str) -> None:
-        self.matter = matter
-        self.width, self.height = content_size(self.settings, matter)
+        self.use_setup(setup_for(self.settings, matter), matter)
+
+    def use_setup(self, setup: PageSetup, matter: str | None = None) -> None:
+        """Measure at this page geometry; text blocks flow at the column width, titles may use the full width."""
+        self.setup = setup
+        if matter:
+            self.matter = matter
+        self.width, self.height, self.full_width = setup.column_width, setup.content_height, setup.content_width
 
     def style(self, name: str, override: str | None = None) -> ResolvedStyle:
         return self.styles.resolve(override or name)
@@ -123,7 +133,9 @@ def _baseline(leading: float, size: float) -> float:
 def text_atoms(runs: list[Run], style: ResolvedStyle, ctx: BuildContext, block_id: str | None,
                *, width: float | None = None, left_extra: float = 0.0, bullet: str | None = None,
                align: str | None = None, decorate: bool = True,
-               preserve_newlines: bool = False, hyphenate: bool = False) -> list[Atom]:
+               preserve_newlines: bool = False, hyphenate: bool = False,
+               line_geom: Callable[[int], tuple[float, float]] | None = None) -> list[Atom]:
+    """`line_geom(n)` -> (x offset, width) of line n lets text run beside a floated image."""
     width = ctx.width if width is None else width
     left = style.left_indent + left_extra
     right = style.right_indent
@@ -131,13 +143,21 @@ def text_atoms(runs: list[Run], style: ResolvedStyle, ctx: BuildContext, block_i
     first_w = width - right - first_x
     rest_w = width - right - left
     toks = tokenize(runs, style, preserve_newlines=preserve_newlines)
-    lines = break_lines(toks, first_w, rest_w, ctx.hyphenator if hyphenate else None)
+    width_of = None
+    if line_geom is not None:
+        def width_of(n: int) -> float:
+            return line_geom(n)[1] - right - (first_x if n == 0 else left)
+        first_w, rest_w = width_of(0), width_of(1)
+    lines = break_lines(toks, first_w, rest_w, ctx.hyphenator if hyphenate else None, width_of)
     leading = style.font_size * style.line_height
     align = align or style.align
     atoms: list[Atom] = []
     for n, line in enumerate(lines):
         x0 = first_x if n == 0 else left
         avail = first_w if n == 0 else rest_w
+        if line_geom is not None:
+            off, _w = line_geom(n)
+            x0, avail = off + x0, width_of(n)
         items, _ = place_line(line, x0, avail, align, block_id)
         size = max([t.size for t in line.tokens] or [style.font_size])
         base = _baseline(max(leading, size * 1.15), size)
@@ -169,14 +189,17 @@ def _flow_from_style(atoms: list[Atom], style: ResolvedStyle, ctx: BuildContext,
                 widow=ctx.settings.widow_lines, orphan=ctx.settings.orphan_lines, **kw)
 
 
-def paragraph_flow(block: ParagraphBlock, ctx: BuildContext, first: bool) -> Flow:
+def paragraph_style(block: ParagraphBlock, ctx: BuildContext, first: bool) -> ResolvedStyle:
     style = ctx.style("first_paragraph" if first else "body", block.style)
     over = {k: v for k, v in (("align", block.align or None), ("left_indent", block.left_indent),
                               ("first_indent", block.first_indent),
                               ("space_before", block.space_before),
                               ("space_after", block.space_after)) if v is not None}
-    if over:
-        style = replace(style, **over)
+    return replace(style, **over) if over else style
+
+
+def paragraph_flow(block: ParagraphBlock, ctx: BuildContext, first: bool) -> Flow:
+    style = paragraph_style(block, ctx, first)
     if not block.runs:
         atoms = [Atom(style.font_size * style.line_height)]
     else:
@@ -504,6 +527,231 @@ def image_flow(block: ImageBlock, ctx: BuildContext) -> Flow:
     return flow
 
 
+# --------------------------------------------------- free placement and page layouts
+def _image_dims(block: ImageBlock, asset) -> tuple[float, float] | None:
+    if asset is None or not asset.data:
+        return None
+    iw, ih = asset.width or 1, asset.height or 1
+    if block.crop and len(block.crop) == 4:
+        l, t, r, b = block.crop
+        iw, ih = iw * max(r - l, 0.01), ih * max(b - t, 0.01)
+    return iw, ih
+
+
+def _tag(items: list[Item], block_id: str) -> list[Item]:
+    for it in items:
+        it.block_id = block_id
+    return items
+
+
+def _missing_image_items(x: float, y: float, w: float, h: float, block_id: str) -> list[Item]:
+    face = fonts.face("sans")
+    return [RectItem(x, y, w, h, fill="#EEEEEE", stroke="#B04040", block_id=block_id),
+            Glyphs(x + 8, y + h / 2, "[Missing image]", face.key, 10, "#B04040",
+                   width=fonts.width("[Missing image]", face.key, 10), block_id=block_id)]
+
+
+def pinned_image_flow(block: ImageBlock, ctx: BuildContext) -> Flow:
+    """An image at an exact spot of the page where the block stands; it takes no room in the text flow."""
+    W, H = ctx.setup.width, ctx.setup.height
+    asset = ctx.book.assets.get(block.asset)
+    dims = _image_dims(block, asset)
+    flow = Flow(block_id=block.id, control="overlay")
+    w = W * min(max(block.pw, 0.02), 1.5)
+    h = w * (dims[1] / dims[0] if dims else 0.6)
+    x, y = block.px * W, block.py * H
+    if dims is None:
+        flow.issues.append(("error", "missing_asset", f"Image asset is missing or empty (id {block.asset or 'none'})"))
+    if x + w < 0 or y + h < 0 or x > W or y > H:
+        flow.issues.append(("warning", "off_page", "A placed image lies completely outside the page"))
+    crop = tuple(block.crop) if block.crop and len(block.crop) == 4 else None
+    rot = dict(rot=block.rotation, pivot_x=x + w / 2, pivot_y=y + h / 2, opacity=min(max(block.opacity, 0.0), 1.0))
+    items: list[Item] = [ImageItem(x=x, y=y, w=w, h=h, asset_id=block.asset, crop=crop, alt=block.alt,
+                                   block_id=block.id, missing=dims is None, **rot)]
+    if dims is None:
+        items.extend(_missing_image_items(x, y, w, h, block.id))
+    flow.ctl = {"items": items}
+    return flow
+
+
+def textbox_flow(block: TextBoxBlock, ctx: BuildContext) -> Flow:
+    """Plain text in a box at an exact spot of the page, outside the text flow."""
+    W, H = ctx.setup.width, ctx.setup.height
+    flow = Flow(block_id=block.id, control="overlay")
+    x, y, w, h = block.px * W, block.py * H, block.pw * W, block.ph * H
+    family = block.font_family or ctx.style("body").font_family
+    layer = CoverLayer(kind="text", text=block.text, x=block.px, y=block.py, w=block.pw, h=block.ph,
+                       font_family=family, size=block.size, bold=block.bold, italic=block.italic,
+                       color=block.color, align=block.align if block.align in ("left", "center", "right") else "left",
+                       line_height=ctx.settings.line_height, valign=block.valign, autofit=block.autofit,
+                       rotation=block.rotation)
+    items: list[Item] = []
+    if block.background:
+        items.append(RectItem(x, y, w, h, fill=block.background, opacity=min(max(block.background_opacity, 0.0), 1.0),
+                              rot=block.rotation, pivot_x=x + w / 2, pivot_y=y + h / 2))
+    text_items = layer_items(ctx.book, layer, W, H)
+    items.extend(text_items)
+    if any(isinstance(g, Glyphs) and g.y > y + h + 2 for g in text_items):
+        flow.issues.append(("warning", "textbox_overflow", "Text does not fit in its text box"))
+    flow.ctl = {"items": _tag(items, block.id)}
+    return flow
+
+
+def layout_page_flow(block: LayoutBlock, ctx: BuildContext) -> Flow:
+    """A designed page. photo_full fills the whole page (no margins, no page number); the others sit inside
+    the margins like any page of the book."""
+    book = ctx.book
+    st = ctx.setup
+    body = ctx.style("body")
+    family = block.font_family or body.font_family
+    align = block.align if block.align in ("left", "center", "right") else "left"
+    asset = book.assets.get(block.asset)
+    issues: list[tuple[str, str, str]] = []
+    if block.layout != "quote_page" and (asset is None or not asset.data):
+        issues.append(("error", "missing_asset", f"Image asset is missing or empty (id {block.asset or 'none'})"))
+
+    def text_layer(txt, x, y, w, h, size, **kw) -> CoverLayer:
+        d = dict(kind="text", text=txt, x=x, y=y, w=w, h=h, font_family=family, size=size, color=body.color,
+                 align=align, line_height=ctx.settings.line_height, autofit=True)
+        d.update(kw)
+        return CoverLayer(**d)
+
+    def build(layers: list[CoverLayer], W: float, H: float) -> list[Item]:
+        out: list[Item] = []
+        for L in layers:
+            out.extend(layer_items(book, L, W, H))
+        return _tag(out, block.id)
+
+    if block.layout == "photo_full":
+        W, H = st.width, st.height
+        layers = [CoverLayer(kind="image", asset=block.asset, x=0, y=0, w=1, h=1, fit="cover", name="Photo")]
+        has_text = bool(block.headline.strip() or block.text.strip())
+        if has_text and block.overlay != "none":
+            bh = 0.30 if block.text.strip() else 0.16
+            by = {"top": 0.0, "middle": (1 - bh) / 2}.get(block.overlay, 1 - bh)
+            layers.append(CoverLayer(kind="rect", x=0, y=by, w=1, h=bh, fill=block.overlay_color,
+                                     opacity=min(max(block.overlay_opacity, 0.0), 1.0), name="Overlay"))
+            pad = 0.08
+            if block.text.strip():
+                layers.append(text_layer(block.headline, pad, by + 0.02, 1 - 2 * pad, bh * 0.36, block.size * 1.5,
+                                         color=block.text_color, bold=True, valign="middle"))
+                layers.append(text_layer(block.text, pad, by + bh * 0.40, 1 - 2 * pad, bh * 0.56, block.size,
+                                         color=block.text_color))
+            else:
+                layers.append(text_layer(block.headline, pad, by, 1 - 2 * pad, bh, block.size * 1.5,
+                                         color=block.text_color, bold=True, valign="middle"))
+        return Flow(block_id=block.id, control="full_page", ctl={"items": build(layers, W, H)}, issues=issues)
+
+    W, H = st.content_width, st.content_height
+    gap = 16.0
+    frac = min(max(block.image_pct, 15.0), 80.0) / 100.0
+    layers = []
+    cap_h = 22.0 if block.headline.strip() and block.layout != "quote_page" else 0.0
+    if block.layout in ("image_left", "image_right"):
+        iw = W * frac - gap / 2
+        tw = W - iw - gap
+        ix, tx = (0.0, iw + gap) if block.layout == "image_left" else (W - iw, 0.0)
+        layers.append(CoverLayer(kind="image", asset=block.asset, x=ix / W, y=0, w=iw / W, h=(H - cap_h) / H,
+                                 fit="cover", name="Image"))
+        if cap_h:
+            layers.append(text_layer(block.headline, ix / W, (H - cap_h + 4) / H, iw / W, (cap_h - 4) / H, 8.5,
+                                     italic=True, color="#666666"))
+        layers.append(text_layer(block.text, tx / W, 0, tw / W, 1.0, block.size))
+    elif block.layout == "image_top":
+        ih = H * frac
+        layers.append(CoverLayer(kind="image", asset=block.asset, x=0, y=0, w=1, h=(ih - cap_h) / H, fit="cover",
+                                 name="Image"))
+        if cap_h:
+            layers.append(text_layer(block.headline, 0, (ih - cap_h + 4) / H, 1, (cap_h - 4) / H, 8.5,
+                                     italic=True, color="#666666"))
+        layers.append(text_layer(block.text, 0, (ih + gap) / H, 1, (H - ih - gap) / H, block.size))
+    else:  # quote_page
+        layers.append(text_layer(block.text, 0.05, 0.18, 0.9, 0.46, block.size * 2.0, italic=True, align="center",
+                                 valign="middle"))
+        if block.headline.strip():
+            layers.append(text_layer(block.headline, 0.1, 0.68, 0.8, 0.1, block.size, align="center"))
+    items = build(layers, W, H)
+    if any(isinstance(g, Glyphs) and g.size < 7.0 for g in items):
+        issues.append(("warning", "layout_text_small", "The text had to be shrunk below 7 pt to fit the page layout"))
+    return Flow(block_id=block.id, control="page_items", ctl={"items": items}, issues=issues)
+
+
+def wrap_flows(blocks: list[Block], i: int, ctx: BuildContext, first: bool) -> tuple[int, list[Flow]]:
+    """A floated image with the following paragraphs wrapped beside it.
+
+    Returns (number of blocks consumed, flows). The image and the lines beside it form one unbreakable
+    flow; whatever of the last paragraph runs below the image continues as an ordinary flow.
+    """
+    img: ImageBlock = blocks[i]
+    asset = ctx.book.assets.get(img.asset)
+    dims = _image_dims(img, asset)
+    issues: list[tuple[str, str, str]] = []
+    if dims is None:
+        issues.append(("error", "missing_asset", f"Image asset is missing or empty (id {img.asset or 'none'})"))
+    iw = ctx.width * min(max(img.width_pct, 15.0), 60.0) / 100.0
+    ih = iw * (dims[1] / dims[0] if dims else 0.6)
+    if ih > ctx.height * 0.6:
+        iw, ih = iw * ctx.height * 0.6 / ih, ctx.height * 0.6
+        issues.append(("warning", "image_scaled", "Image was reduced (aspect ratio kept) to fit the page"))
+    left_side = img.place == "wrap_left"
+    gap = 10.0
+    img_x = 0.0 if left_side else ctx.width - iw
+    off = iw + gap if left_side else 0.0
+    narrow = ctx.width - iw - gap
+    cap_atoms = text_atoms(img.caption, ctx.style("caption"), ctx, img.id, width=iw) if img.caption else []
+    region = ih + (6 + _atoms_height(cap_atoms) if cap_atoms else 0.0) + 4
+    crop = tuple(img.crop) if img.crop and len(img.crop) == 4 else None
+    items: list[Item] = [ImageItem(x=img_x, y=0, w=iw, h=ih, asset_id=img.asset, crop=crop, alt=img.alt,
+                                   block_id=img.id, missing=dims is None)]
+    if dims is None:
+        items.extend(_missing_image_items(img_x, 0, iw, ih, img.id))
+    cy = ih + 6
+    for a in cap_atoms:
+        items.extend(it.moved(img_x, cy) for it in a.items)
+        cy += a.height
+
+    atoms_a: list[Atom] = []
+    used = 0.0
+    j = i + 1
+    rest: Flow | None = None
+    ids: list[str] = []
+    prev_after = 0.0
+    while j < len(blocks) and used < region - 0.5:
+        b = blocks[j]
+        if not (isinstance(b, ParagraphBlock) and b.runs):
+            break
+        style = paragraph_style(b, ctx, first and j == i + 1)
+        gap_y = max(prev_after, style.space_before) if atoms_a else 0.0
+        start = used + gap_y
+        line_h = max(style.font_size * style.line_height, style.font_size * 1.15)
+
+        def geom(n: int, start: float = start, h: float = line_h) -> tuple[float, float]:
+            return (off, narrow) if start + n * h < region - 0.5 else (0.0, ctx.width)
+
+        atoms = text_atoms(b.runs, style, ctx, b.id, preserve_newlines=True, hyphenate=True, line_geom=geom)
+        k = sum(1 for n in range(len(atoms)) if start + n * line_h < region - 0.5)
+        if gap_y:
+            atoms[0].gap_before = gap_y
+        atoms_a.extend(atoms[:k])
+        used = start + _atoms_height(atoms[:k])
+        ids.append(b.id)
+        prev_after = style.space_after
+        j += 1
+        if k < len(atoms):
+            rest = Flow(block_id=b.id, atoms=atoms[k:], space_after=style.space_after,
+                        widow=ctx.settings.widow_lines, orphan=ctx.settings.orphan_lines)
+            break
+    if not atoms_a:
+        atoms_a = [Atom(region, items)]
+    else:
+        atoms_a[0].items = items + atoms_a[0].items
+        if used < region:
+            atoms_a.append(Atom(region - used))
+    flow = Flow(block_id=img.id, atoms=atoms_a, space_before=8, space_after=0.0 if rest else max(prev_after, 8.0),
+                widow=1, orphan=1, keep_together=True, block_ids=ids, issues=issues)
+    return j - i, [flow] + ([rest] if rest else [])
+
+
 # ------------------------------------------------------------- composites
 EXERCISE_LABELS = {"objective": "Learning objective", "definition": "Definition",
                    "example": "Example", "exercise": "Exercise", "question": "Question",
@@ -586,7 +834,11 @@ def block_flows(block: Block, ctx: BuildContext, first: bool) -> list[Flow]:
     if isinstance(block, TableBlock):
         return table_flows(block, ctx)
     if isinstance(block, ImageBlock):
-        return [image_flow(block, ctx)]
+        return [pinned_image_flow(block, ctx) if block.place == "page" else image_flow(block, ctx)]
+    if isinstance(block, TextBoxBlock):
+        return [textbox_flow(block, ctx)]
+    if isinstance(block, LayoutBlock):
+        return [layout_page_flow(block, ctx)]
     if isinstance(block, SceneBreakBlock):
         return [scene_break_flow(block, ctx)]
     if isinstance(block, PageBreakBlock):
@@ -859,12 +1111,17 @@ def _ornament_flow(kind: str, ctx: BuildContext) -> Flow | None:
 
 
 def section_flows(book: BookProject, ctx: BuildContext, section: Section, depth: int,
-                  labels: dict[str, str]) -> list[Flow]:
+                  labels: dict[str, str], inherited_page: dict | None = None) -> list[Flow]:
     """All flows of a section (and its children), beginning with a control flow."""
     s = book.settings
-    ctx.use_matter(section.matter)
-    flows: list[Flow] = []
     kind = section.kind
+    page = merge_page_dicts(inherited_page, section.page)
+    setup = setup_for(s, section.matter, page)
+    if setup.columns > 1 and kind in GENERATED_KINDS:  # generated pages (contents, title...) stay single-column
+        setup = replace(setup, columns=1, gap=0.0)
+    ctx.use_setup(setup, section.matter)
+    ctx.width = setup.content_width  # titles span the page; text blocks switch to the column width below
+    flows: list[Flow] = []
 
     chapter_like = kind not in ("section",)
     new_page = section.new_page
@@ -882,11 +1139,12 @@ def section_flows(book: BookProject, ctx: BuildContext, section: Section, depth:
     flows.append(Flow(control="section_start",
                       ctl={"section_id": section.id, "title": section.title, "matter": section.matter,
                            "kind": kind, "new_page": new_page, "recto": recto,
-                           "opening": kind not in ("section",)}))
+                           "opening": kind not in ("section",), "setup": setup}))
 
     if kind == "front_cover" or kind == "back_cover":
-        W, H = s.page_size_pt()
-        flows.append(Flow(control="full_page", ctl={"items": cover_items(book, W, H, kind == "back_cover")}))
+        W, H = setup.width, setup.height
+        flows.append(Flow(control="full_page", ctl={"items": cover_items(book, W, H, kind == "back_cover"),
+                                                    "cover": "back" if kind == "back_cover" else "front"}))
         return flows
 
     if kind == "title_page" and not section.blocks:
@@ -924,10 +1182,25 @@ def section_flows(book: BookProject, ctx: BuildContext, section: Section, depth:
         if section.title:
             flows.append(Flow(control="anchor", ctl={"anchor": f"sec:{section.id}"}))
 
+    ctx.width = setup.column_width
+    if setup.columns > 1:
+        flows.append(Flow(control="columns", ctl={"n": setup.columns, "gap": setup.gap}))
     first = True
-    for b in section.blocks:
+    blocks = section.blocks
+    i = 0
+    while i < len(blocks):
+        b = blocks[i]
+        if isinstance(b, ImageBlock) and b.place in ("wrap_left", "wrap_right") and not b.own_page:
+            used, bf = wrap_flows(blocks, i, ctx, first)
+            flows.extend(bf)
+            first = False
+            i += used
+            continue
         bf = block_flows(b, ctx, first)
         flows.extend(bf)
+        i += 1
+        if isinstance(b, (TextBoxBlock, LayoutBlock)) or (isinstance(b, ImageBlock) and b.place == "page"):
+            continue  # pinned items and designed pages do not change the paragraph rhythm
         if isinstance(b, (ParagraphBlock,)) and b.runs:
             first = False
         elif isinstance(b, (HeadingBlock, SceneBreakBlock, PageBreakBlock)):
@@ -936,7 +1209,7 @@ def section_flows(book: BookProject, ctx: BuildContext, section: Section, depth:
             first = False
     for child in section.children:
         if child.enabled:
-            flows.extend(section_flows(book, ctx, child, depth + 1, labels))
+            flows.extend(section_flows(book, ctx, child, depth + 1, labels, page))
     return flows
 
 

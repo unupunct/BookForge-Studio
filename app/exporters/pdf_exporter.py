@@ -65,7 +65,9 @@ def render_pdf(book: BookProject, layout: LayoutResult, path: Path, profile: Pdf
                progress: Callable[[int, int], None] | None = None,
                cancel: Callable[[], bool] | None = None) -> dict:
     """Write the PDF to `path`. Returns geometry information used for verification."""
-    W, H = layout.page_width, layout.page_height
+    first = layout.pages[0] if layout.pages else None
+    # a section may use its own page size: every PDF page takes the size of its layout page
+    W, H = (first.width, first.height) if first else (layout.page_width, layout.page_height)
     bleed = (profile.bleed_mm if bleed_mm is None else bleed_mm) * MM_TO_PT
     marks = profile.crop_marks if crop_marks is None else crop_marks
     ofs = bleed + (SLUG_PT if marks and bleed > 0 else 0.0)
@@ -227,10 +229,15 @@ def render_pdf(book: BookProject, layout: LayoutResult, path: Path, profile: Pdf
                 c.line(cx, cy + sy * gap, cx, cy + sy * (gap + ln))
         c.restoreState()
 
+    first_geometry = (PW, PH, W, H)
+    page_sizes: list[tuple[float, float]] = []
     for page in layout.pages:
         if cancel and cancel():
             c.save()
             raise ExportCancelled()
+        W, H = page.width, page.height
+        PW, PH = W + 2 * ofs, H + 2 * ofs
+        page_sizes.append((PW, PH))
         c.setPageSize((PW, PH))
         try:  # page boxes make the trim and bleed explicit for printers
             c.setTrimBox((ofs, ofs, ofs + W, ofs + H))
@@ -262,5 +269,6 @@ def render_pdf(book: BookProject, layout: LayoutResult, path: Path, profile: Pdf
         if progress:
             progress(page.index + 1, total)
     c.save()
+    PW, PH, W, H = first_geometry
     return {"page_width": PW, "page_height": PH, "trim_width": W, "trim_height": H,
-            "bleed_pt": bleed, "offset_pt": ofs}
+            "bleed_pt": bleed, "offset_pt": ofs, "page_sizes": page_sizes}

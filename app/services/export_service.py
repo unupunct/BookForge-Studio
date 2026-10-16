@@ -62,7 +62,8 @@ def _temp_in(dest: Path) -> Path:
 
 
 def inspect_pdf(path: Path, expected_pages: int, book: BookProject,
-                expected_size: tuple[float, float]) -> dict:
+                expected_size: tuple[float, float],
+                expected_sizes: list[tuple[float, float]] | None = None) -> dict:
     """Open the generated PDF and confirm it matches the layout. Raises ExportError."""
     try:
         doc = pymupdf.open(str(path))
@@ -79,6 +80,11 @@ def inspect_pdf(path: Path, expected_pages: int, book: BookProject,
         if abs(r.width - expected_size[0]) > 0.6 or abs(r.height - expected_size[1]) > 0.6:
             raise ExportError(f"Verification failed: page size {r.width:.1f}x{r.height:.1f} pt, "
                               f"expected {expected_size[0]:.1f}x{expected_size[1]:.1f}")
+        for pno, (ew, eh) in enumerate(expected_sizes or []):  # sections may have their own page size
+            pr = doc[pno].rect
+            if abs(pr.width - ew) > 0.6 or abs(pr.height - eh) > 0.6:
+                raise ExportError(f"Verification failed: page {pno + 1} is {pr.width:.1f}x{pr.height:.1f} pt, "
+                                  f"expected {ew:.1f}x{eh:.1f}")
         fonts = {}
         for pno in range(doc.page_count):
             for f in doc[pno].get_fonts():
@@ -117,7 +123,7 @@ def export_pdf(book: BookProject, dest: Path, profile_key: str = "digital", *,
     try:
         geom = render_pdf(book, layout, tmp, profile, bleed_mm, crop_marks, progress, cancel)
         info = inspect_pdf(tmp, layout.page_count, book,
-                           (geom["page_width"], geom["page_height"]))
+                           (geom["page_width"], geom["page_height"]), geom.get("page_sizes"))
         info.update(profile=profile.key, bleed_pt=geom["bleed_pt"],
                     trim_size_pt=(geom["trim_width"], geom["trim_height"]))
         dpis = []

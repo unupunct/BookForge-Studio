@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pymupdf
 
-from .domain.content_blocks import ParagraphBlock, PoetryBlock, Run
+from .domain.content_blocks import ImageBlock, LayoutBlock, ParagraphBlock, PoetryBlock, Run, TextBoxBlock
 from .domain.sections import Section
 from .persistence.project_archive import load_project, save_project
 from .layout.hyphenation import get_hyphenator
@@ -21,6 +21,37 @@ from .services.project_service import NewBookSpec, create_project
 from .services.template_service import TemplateService
 
 SAMPLE = "Ștefan își ține ceaiul în căni țesute. Școala începe în Șoimuș. ĂÂÎȘȚ ăâîșț „…”"
+
+
+def _check_page_layouts(out: Path) -> bool:
+    """Columns, a section with its own page size, a floated image, a pinned text box, a photo page, screen PDF."""
+    import io
+
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (300, 200), (40, 120, 200)).save(buf, "PNG")
+    book = create_project(NewBookSpec(title="Layouts", author="BookForge", profile="novel", cover=False))
+    img = book.add_asset(buf.getvalue(), "pic.png").id
+    text = lambda t: ParagraphBlock(runs=[Run(t * 12)])
+    cols = Section("Columns", "chapter", blocks=[text("Two column text. ") for _ in range(4)])
+    cols.page = {"columns": 2}
+    wrap = Section("Wrap", "chapter", blocks=[ImageBlock(asset=img, width_pct=40, place="wrap_left"), text("Wrapped words. "),
+                                              TextBoxBlock(text="PINNED BOX", px=0.1, py=0.7, pw=0.4, ph=0.08)])
+    photo = Section("Photo", "chapter", blocks=[LayoutBlock(layout="photo_full", asset=img, headline="PHOTO PAGE")])
+    small = Section("Small", "chapter", blocks=[text("Small page. ")])
+    small.page = {"width_mm": 100, "height_mm": 140}
+    toc = next((i for i, s in enumerate(book.sections) if s.kind == "chapter"), len(book.sections))
+    book.sections = [s for s in book.sections if s.kind != "chapter"]
+    book.sections[toc:toc] = [cols, wrap, photo, small]
+    pdf = out / "layouts.pdf"
+    export_pdf(book, pdf, "digital", overwrite=True, allow_errors=True)
+    doc = pymupdf.open(str(pdf))
+    words = "\n".join(p.get_text() for p in doc)
+    sizes = {(round(p.rect.width), round(p.rect.height)) for p in doc}
+    export_pdf(book, out / "layouts-screen.pdf", "screen", overwrite=True, allow_errors=True, screen_dark=True)
+    return bool("Two column text" in words and "Wrapped words" in words and "PINNED BOX" in words
+                and "PHOTO PAGE" in words and len(sizes) >= 2)
 
 
 def run(out_dir: str) -> int:
@@ -46,7 +77,8 @@ def run(out_dir: str) -> int:
         text = "\n".join(p.get_text() for p in doc)
         report.update(pages=doc.page_count, bytes=pdf.stat().st_size, fonts_embedded=res.preflight["all_fonts_embedded"],
                       romanian_ok="ĂÂÎȘȚ ăâîșț" in text, poem_ok="Line one" in text)
-        report["ok"] = bool(report["romanian_ok"] and report["poem_ok"] and report["fonts_embedded"]
+        report["layouts_ok"] = _check_page_layouts(out)
+        report["ok"] = bool(report["layouts_ok"] and report["romanian_ok"] and report["poem_ok"] and report["fonts_embedded"]
                             and doc.page_count >= 4 and report["templates"] >= 13
                             and not report["epub_problems"] and report["hyphenation"])
     except Exception as e:  # report every failure instead of crashing silently

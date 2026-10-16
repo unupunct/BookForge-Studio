@@ -18,8 +18,9 @@ from pathlib import Path
 from xml.sax.saxutils import escape, quoteattr
 
 from ..domain.book import BookProject
+from ..domain.content_blocks import TextBoxBlock
 from ..domain.content_blocks import (Block, CodeBlock, ExerciseBlock, FootnoteBlock, HeadingBlock,
-                                     ImageBlock, ListBlock, PageBreakBlock, ParagraphBlock,
+                                     ImageBlock, LayoutBlock, ListBlock, PageBreakBlock, ParagraphBlock,
                                      PoetryBlock, QuoteBlock, RecipeBlock, Run, SceneBreakBlock,
                                      TableBlock, runs_text)
 from ..domain.sections import GENERATED_KINDS, Section
@@ -171,6 +172,14 @@ class _Builder:
             cap = f"<figcaption>{self.runs(b.caption)}</figcaption>" if b.caption else ""
             return (f'<figure><img src={_attr("../" + it.href)} alt={_attr(b.alt or runs_text(b.caption) or "image")} '
                     f'style="width:{min(max(b.width_pct, 10), 100):.0f}%"/>{cap}</figure>')
+        if isinstance(b, TextBoxBlock):
+            return "".join(f"<p>{_x(t)}</p>" for t in b.text.split("\n\n") if t.strip())
+        if isinstance(b, LayoutBlock):
+            it = self.image(b.asset, None) if b.asset else None
+            fig = (f'<figure><img src={_attr("../" + it.href)} alt={_attr(b.headline or "image")} '
+                   f'style="width:100%"/></figure>') if it is not None else ""
+            head = f"<h4>{_x(b.headline)}</h4>" if b.headline else ""
+            return fig + head + "".join(f"<p>{_x(t)}</p>" for t in b.text.split("\n\n") if t.strip())
         if isinstance(b, TableBlock):
             rows = []
             for i, r in enumerate(b.rows):

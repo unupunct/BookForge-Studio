@@ -7,8 +7,9 @@ import io
 from pathlib import Path
 
 from ..domain.book import BookProject
+from ..domain.content_blocks import TextBoxBlock
 from ..domain.content_blocks import (Block, CodeBlock, ExerciseBlock, FootnoteBlock, HeadingBlock,
-                                     ImageBlock, ListBlock, PageBreakBlock, ParagraphBlock,
+                                     ImageBlock, LayoutBlock, ListBlock, PageBreakBlock, ParagraphBlock,
                                      PoetryBlock, QuoteBlock, RecipeBlock, Run, SceneBreakBlock,
                                      TableBlock, runs_text)
 from ..domain.sections import GENERATED_KINDS, Section
@@ -101,6 +102,13 @@ def _block(book: BookProject, b: Block) -> str:
         return f'{title}<div class="poem"{align}>{html.escape(b.text)}</div>'
     if isinstance(b, ImageBlock):
         return _image_tag(book, b)
+    if isinstance(b, TextBoxBlock):
+        return "".join(f"<p>{html.escape(t)}</p>" for t in b.text.split("\n\n") if t.strip())
+    if isinstance(b, LayoutBlock):
+        img = _image_tag(book, ImageBlock(asset=b.asset, alt=b.headline)) if b.asset else ""
+        head = f"<h4>{html.escape(b.headline)}</h4>" if b.headline else ""
+        body = "".join(f"<p>{html.escape(t)}</p>" for t in b.text.split("\n\n") if t.strip())
+        return img + head + body
     if isinstance(b, TableBlock):
         rows = []
         for i, r in enumerate(b.rows):

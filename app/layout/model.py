@@ -141,6 +141,7 @@ class Page:
     label: str = ""  # printed page number ("iv", "12") or ""
     blank: str | None = None  # "intentional" | None
     full_bleed: bool = False  # covers: no margins, no running elements
+    cover: str = ""  # "front" | "back" for the cover pages themselves (not for designed photo pages)
     opening: bool = False  # a chapter opens on this page
     used: bool = False  # received flowed content
     anchors: dict[str, float] = field(default_factory=dict)

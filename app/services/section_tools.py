@@ -30,7 +30,7 @@ def _commit(book: BookProject, section: Section, groups: list[tuple[str, list[Bl
             head: list[Block]) -> list[Section]:
     siblings, idx = _siblings(book, section.id)
     new = [Section(title, section.kind, blocks=blocks, in_toc=section.in_toc, show_title=True,
-                   new_page=section.new_page) for title, blocks in groups]
+                   new_page=section.new_page, page=dict(section.page)) for title, blocks in groups]
     section.blocks = head
     pos = idx + 1
     for s in new:

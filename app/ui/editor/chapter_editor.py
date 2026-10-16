@@ -13,8 +13,8 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QHBoxLayout, 
                                QToolBar, QToolButton, QVBoxLayout, QWidget)
 
 from ...application_state import AppState
-from ...domain.content_blocks import (Block, ImageBlock, PageBreakBlock, ParagraphBlock,
-                                      RecipeBlock, SceneBreakBlock, TableBlock, new_id)
+from ...domain.content_blocks import (Block, ImageBlock, LayoutBlock, PageBreakBlock, ParagraphBlock,
+                                      RecipeBlock, SceneBreakBlock, TableBlock, TextBoxBlock, new_id)
 from .. import theme
 from .block_codec import (LIST_KINDS, P_ALIGN, P_ID, P_KIND, P_KWN, P_LEVEL, P_STYLE, LINE_SEP,
                           blocks_from_document, block_format, char_format, load_blocks,
@@ -307,6 +307,8 @@ class ChapterEditor(QWidget):
         self.insert_menu = QMenu("Insert", self)
         self.insert_menu.addAction("Image…", self.insert_image)
         self.insert_menu.addAction("Table…", self.insert_table)
+        self.insert_menu.addAction("Page layout (photo page, image + text, quote)…", self.insert_layout)
+        self.insert_menu.addAction("Text box (pinned to the page)…", self.insert_textbox)
         self.insert_menu.addAction("Page break", lambda: self.insert_block(PageBreakBlock()))
         self.insert_menu.addAction("Blank page", lambda: self.insert_block(PageBreakBlock(blank=True)))
         self.insert_menu.addAction("Scene separator", lambda: self.insert_block(SceneBreakBlock()))
@@ -362,6 +364,21 @@ class ChapterEditor(QWidget):
         self._loading = False
         self._changed = False
         self._update_actions()
+
+    def block_changed_externally(self, block_id: str) -> None:
+        """A block was changed outside the editor (dragged in the preview): refresh the editor's own copy."""
+        sec = self.section()
+        mb = next((b for b in sec.blocks if b.id == block_id), None) if sec else None
+        if mb is None:
+            return
+        if block_id in self._pending:
+            self._pending[block_id] = mb
+        b = self.edit.document().begin()
+        while b.isValid():
+            if str(b.blockFormat().property(P_ID) or "") == block_id and str(b.blockFormat().property(P_KIND) or "") == "placeholder":
+                self._refresh_placeholder(b, mb)
+                break
+            b = b.next()
 
     def reload_if_stale(self) -> None:
         """Called after undo/redo of structure: reload from the (replaced) model."""
@@ -740,6 +757,20 @@ class ChapterEditor(QWidget):
         if dlg.exec():
             self.insert_block(dlg.result_block())
 
+    def insert_layout(self) -> None:
+        from .block_dialogs import LayoutDialog
+        self.flush()
+        dlg = LayoutDialog(self, LayoutBlock(), self.state.project)
+        if dlg.exec():
+            self.insert_block(dlg.result_block())
+
+    def insert_textbox(self) -> None:
+        from .block_dialogs import TextBoxDialog
+        self.flush()
+        dlg = TextBoxDialog(self, TextBoxBlock(text="Text", px=0.15, py=0.15, pw=0.4, ph=0.12))
+        if dlg.exec():
+            self.insert_block(dlg.result_block())
+
     def insert_recipe(self) -> None:
         from .block_dialogs import RecipeDialog
         dlg = RecipeDialog(self, RecipeBlock(), self.state.project)
@@ -747,7 +778,7 @@ class ChapterEditor(QWidget):
             self.insert_block(dlg.result_block())
 
     def activate_placeholder(self, qblock) -> None:
-        from .block_dialogs import ImageDialog, RecipeDialog, TableDialog
+        from .block_dialogs import ImageDialog, LayoutDialog, RecipeDialog, TableDialog, TextBoxDialog
         bid = qblock.blockFormat().property(P_ID)
         mb = self._model_block(str(bid)) if bid else None
         if mb is None:
@@ -759,6 +790,10 @@ class ChapterEditor(QWidget):
             dlg = TableDialog(self, mb)
         elif isinstance(mb, RecipeBlock):
             dlg = RecipeDialog(self, mb, self.state.project)
+        elif isinstance(mb, TextBoxBlock):
+            dlg = TextBoxDialog(self, mb)
+        elif isinstance(mb, LayoutBlock):
+            dlg = LayoutDialog(self, mb, self.state.project)
         elif isinstance(mb, PageBreakBlock):
             blank = QMessageBox.question(self, "Page break", "Insert a blank page here as well?\n"
                                          "Yes = blank page, No = ordinary page break",

@@ -107,7 +107,10 @@ def _hyphenate(piece: Token, room: float, hyph) -> tuple[Token, Token] | None:
     return None
 
 
-def break_lines(tokens: list[Token], first_width: float, rest_width: float, hyph=None) -> list[BrokenLine]:
+def break_lines(tokens: list[Token], first_width: float, rest_width: float, hyph=None,
+                width_of=None) -> list[BrokenLine]:
+    """Greedy line breaking. `width_of(n)`, when given, is the width of line n (0-based): it lets
+    text run narrower beside a floated image and full width below it."""
     lines: list[BrokenLine] = []
     cur: list[Token] = []
     cur_w = 0.0
@@ -120,7 +123,7 @@ def break_lines(tokens: list[Token], first_width: float, rest_width: float, hyph
             cur.pop()
         lines.append(BrokenLine(cur, last))
         cur, cur_w = [], 0.0
-        avail = rest_width
+        avail = max(width_of(len(lines)), 1.0) if width_of else rest_width
 
     pending: list[Token] = []
     for tok in tokens:

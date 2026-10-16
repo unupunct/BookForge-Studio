@@ -17,9 +17,9 @@ from PySide6.QtGui import (QBrush, QColor, QFont, QTextBlockFormat, QTextCharFor
 
 from ...domain.book import BookProject
 from ...domain.content_blocks import (Block, CodeBlock, ExerciseBlock, FootnoteBlock, HeadingBlock,
-                                      ImageBlock, ListBlock, PageBreakBlock, ParagraphBlock,
+                                      ImageBlock, LayoutBlock, ListBlock, PageBreakBlock, ParagraphBlock,
                                       PoetryBlock, QuoteBlock, RecipeBlock, Run, SceneBreakBlock,
-                                      TableBlock, merge_runs, new_id, runs_text)
+                                      TableBlock, TextBoxBlock, merge_runs, new_id, runs_text)
 from ...layout.page_builder import EXERCISE_LABELS
 from .. import theme
 
@@ -133,7 +133,15 @@ def placeholder_text(block: Block, book: BookProject | None) -> str:
         a = book.assets.get(block.asset) if book else None
         name = a.filename if a else "missing image"
         cap = runs_text(block.caption)
-        return f"[Image: {name}]" + (f"  —  {cap}" if cap else "") + "   (double-click to edit)"
+        where = {"wrap_left": " (floats left)", "wrap_right": " (floats right)",
+                 "page": " (pinned to the page)"}.get(block.place, "")
+        return f"[Image: {name}{where}]" + (f"  —  {cap}" if cap else "") + "   (double-click to edit)"
+    if isinstance(block, TextBoxBlock):
+        first = (block.text.strip().splitlines() or [""])[0][:48]
+        return f"[Text box: {first or 'empty'}]   (pinned to the page, double-click to edit)"
+    if isinstance(block, LayoutBlock):
+        from ...domain.content_blocks import LAYOUT_KINDS
+        return f"[Page layout: {LAYOUT_KINDS.get(block.layout, block.layout)}]   (own page, double-click to edit)"
     if isinstance(block, TableBlock):
         cols = max((len(r) for r in block.rows), default=0)
         cap = runs_text(block.caption)

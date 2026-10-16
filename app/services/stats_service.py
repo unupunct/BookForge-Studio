@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from ..domain.content_blocks import LayoutBlock
 from ..domain.book import BookProject
 from ..domain.content_blocks import (CodeBlock, HeadingBlock, ImageBlock, ListBlock, ParagraphBlock,
                                      PoetryBlock, TableBlock)
@@ -88,8 +89,8 @@ def compute_stats(book: BookProject, layout: LayoutResult | None = None) -> Book
                 st.poems += 1
                 st.verse_lines += n
                 st.longest_poem_lines = max(st.longest_poem_lines, n)
-            elif isinstance(b, ImageBlock):
-                st.images += 1
+            elif isinstance(b, (ImageBlock, LayoutBlock)):
+                st.images += 1 if not isinstance(b, LayoutBlock) or b.asset else 0
             elif isinstance(b, TableBlock):
                 st.tables += 1
             elif isinstance(b, CodeBlock):

@@ -10,5 +10,5 @@ if "%ISCC%"=="" (
 )
 call scripts\build_windows.bat || exit /b 1
 "%ISCC%" installer\bookforge.iss || exit /b 1
-echo Installer: dist-installer\BookForgeStudio-Setup-0.3.2.exe
+echo Installer: dist-installer\BookForgeStudio-Setup-0.4.0.exe
 exit /b 0
